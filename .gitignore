@@ -1,0 +1,26 @@
+# Composer dependencies
+/vendor/
+/composer.lock
+
+
+# Environment files
+/.env
+
+
+# IDE / Editor folders
+/.idea/
+/.vscode/
+
+# OS junk
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Treat all files as text, auto‑detecting
+* text=auto
+
+# Force Unix (LF) line endings for these source files:
+*.php     text eol=lf
+*.md      text eol=lf
