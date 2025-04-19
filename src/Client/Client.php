@@ -2,7 +2,7 @@
 
 namespace Rizwan\LaravelFcgiClient\Client;
 
-use Rizwan\LaravelFcgiClient\Connections\ConnectionInterface;
+use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
 use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
 use Rizwan\LaravelFcgiClient\Exceptions\ReadException;
@@ -23,13 +23,13 @@ class Client
         $this->nameValuePairEncoder = new NameValuePairEncoder();
     }
 
-    public function sendRequest(ConnectionInterface $connection, Request $request): Response
+    public function sendRequest(NetworkConnection $connection, Request $request): Response
     {
         $socketId = $this->sendAsyncRequest($connection, $request);
         return $this->readResponse($socketId);
     }
 
-    public function sendAsyncRequest(ConnectionInterface $connection, Request $request): int
+    public function sendAsyncRequest(NetworkConnection $connection, Request $request): int
     {
         $socket = $this->sockets->new(
             $connection,

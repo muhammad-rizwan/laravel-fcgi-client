@@ -2,7 +2,7 @@
 
 namespace Rizwan\LaravelFcgiClient\Client;
 
-use Rizwan\LaravelFcgiClient\Connections\ConnectionInterface;
+use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
 use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
 use Rizwan\LaravelFcgiClient\Enums\PacketType;
@@ -35,7 +35,7 @@ class Socket
 
     public function __construct(
         private readonly SocketId $id,
-        private readonly ConnectionInterface $connection,
+        private readonly NetworkConnection $connection,
         private readonly PacketEncoder $packetEncoder,
         private readonly NameValuePairEncoder $nameValuePairEncoder
     ) {

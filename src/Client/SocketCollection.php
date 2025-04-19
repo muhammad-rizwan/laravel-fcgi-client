@@ -2,7 +2,7 @@
 
 namespace Rizwan\LaravelFcgiClient\Client;
 
-use Rizwan\LaravelFcgiClient\Connections\ConnectionInterface;
+use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
 use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
 use Rizwan\LaravelFcgiClient\Exceptions\ReadException;
@@ -14,7 +14,7 @@ class SocketCollection
     private array $sockets = [];
 
     public function new(
-        ConnectionInterface $connection,
+        NetworkConnection $connection,
         PacketEncoder $packetEncoder,
         NameValuePairEncoder $nameValuePairEncoder
     ): Socket {

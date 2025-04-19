@@ -2,9 +2,7 @@
 
 namespace Rizwan\LaravelFcgiClient\Support;
 
-use Rizwan\LaravelFcgiClient\Connections\ConnectionInterface;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
-use Rizwan\LaravelFcgiClient\Connections\UnixDomainSocketConnection;
 use InvalidArgumentException;
 
 class ConnectionManager
@@ -21,7 +19,7 @@ class ConnectionManager
         return isset($this->connections[$name]);
     }
 
-    public function getConnection(string $name): ConnectionInterface
+    public function getConnection(string $name): NetworkConnection
     {
         if (!$this->hasConnection($name)) {
             throw new InvalidArgumentException("LaravelFcgiClient connection '$name' not defined");
@@ -30,21 +28,11 @@ class ConnectionManager
         return $this->connections[$name];
     }
 
-    public function parseConnectionUrl(string $url, array $options = []): ConnectionInterface
+    public function parseConnectionUrl(string $url, array $options = []): NetworkConnection
     {
         $connectTimeout = $options['connect_timeout'] ?? 5000;
         $readWriteTimeout = $options['read_write_timeout'] ?? 5000;
-
-        // Parse URL
-        if (str_starts_with($url, 'unix://')) {
-            // Unix socket connection
-            $socketPath = substr($url, 7);
-            return new UnixDomainSocketConnection($socketPath, $connectTimeout, $readWriteTimeout);
-        }
-
-        if (str_starts_with($url, 'tcp://')) {
-            $url = substr($url, 6);
-        }
+        $url = substr($url, 6);
 
         // Parse host and port
         $parts = parse_url('tcp://' . $url);
