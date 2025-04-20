@@ -16,9 +16,6 @@ class HeaderBag
     /**
      * Set a single header.
      * This will overwrite any existing header with the same name.
-     *
-     * @param string $key
-     * @param string $value
      */
     public function set(string $key, string $value): void
     {
@@ -30,7 +27,7 @@ class HeaderBag
      * Add multiple headers at once.
      * Values will be cast to string automatically.
      *
-     * @param array<string, string|int|float> $headers
+     * @param  array<string, string|int|float>  $headers
      */
     public function add(array $headers): void
     {
@@ -65,9 +62,6 @@ class HeaderBag
      * Examples:
      * - "Authorization" becomes "HTTP_AUTHORIZATION"
      * - "Content-Type" stays "CONTENT_TYPE" for PHP compatibility
-     *
-     * @param string $key
-     * @return string
      */
     private function normalizeKey(string $key): string
     {
@@ -75,7 +69,7 @@ class HeaderBag
 
         return match ($key) {
             'CONTENT_TYPE', 'CONTENT_LENGTH' => $key,
-            default => str_starts_with($key, 'HTTP_') ? $key : 'HTTP_' . $key,
+            default => str_starts_with($key, 'HTTP_') ? $key : 'HTTP_'.$key,
         };
     }
 }

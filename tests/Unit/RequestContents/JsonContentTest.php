@@ -12,7 +12,7 @@ test('encodes json data correctly', function () {
     $data = [
         'name' => 'John Doe',
         'email' => 'john@example.com',
-        'items' => ['item1', 'item2']
+        'items' => ['item1', 'item2'],
     ];
 
     $content = new JsonContent($data);

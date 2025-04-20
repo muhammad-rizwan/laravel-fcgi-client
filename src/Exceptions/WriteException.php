@@ -2,6 +2,4 @@
 
 namespace Rizwan\LaravelFcgiClient\Exceptions;
 
-class WriteException extends FastCGIException
-{
-}
+class WriteException extends FastCGIException {}

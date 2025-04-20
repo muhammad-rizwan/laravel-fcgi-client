@@ -1,4 +1,5 @@
 <?php
+
 namespace Rizwan\LaravelFcgiClient\Enums;
 
 enum SocketStatus: int
@@ -7,9 +8,6 @@ enum SocketStatus: int
     case BUSY = 2;
     case IDLE = 3;
 
-    /**
-     * @return bool
-     */
     public function isAvailable(): bool
     {
         return match ($this) {

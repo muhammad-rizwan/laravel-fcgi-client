@@ -13,6 +13,7 @@ beforeEach(function () {
                 '',
                 0.1
             ));
+
         return $mockClient;
     });
 });

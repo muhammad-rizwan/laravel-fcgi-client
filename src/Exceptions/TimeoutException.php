@@ -2,6 +2,4 @@
 
 namespace Rizwan\LaravelFcgiClient\Exceptions;
 
-class TimeoutException extends FastCGIException
-{
-}
+class TimeoutException extends FastCGIException {}

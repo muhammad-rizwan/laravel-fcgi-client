@@ -3,7 +3,7 @@
 use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
 
 beforeEach(function () {
-    $this->encoder = new NameValuePairEncoder();
+    $this->encoder = new NameValuePairEncoder;
 });
 
 test('encodes pair with short values', function () {
@@ -17,7 +17,7 @@ test('encodes pair with short values', function () {
     expect(substr($result, 1, 1))->toBe(chr(strlen($value)));
 
     // Check that name and value are included
-    expect(substr($result, 2))->toBe($name . $value);
+    expect(substr($result, 2))->toBe($name.$value);
 });
 
 test('encodes multiple pairs', function () {

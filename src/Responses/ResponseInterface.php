@@ -36,7 +36,7 @@ interface ResponseInterface
 
     public function serverError(): bool;
 
-    public function json(string $key = null, mixed $default = null): mixed;
+    public function json(?string $key = null, mixed $default = null): mixed;
 
     public function toArray(): array;
 

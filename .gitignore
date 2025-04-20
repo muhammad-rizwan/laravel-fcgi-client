@@ -1,26 +1,57 @@
-# Composer dependencies
+# Composer
 /vendor/
-/composer.lock
+composer.lock
 
+# Laravel environment
+.env
+.env.*.php
 
-# Environment files
-/.env
+# Laravel cache and logs
+/storage/*.key
+/storage/framework/*
+!/storage/framework/.gitignore
+/storage/logs/*
+!/storage/logs/.gitignore
 
+# IDE / Editor configs
+.idea/
+.vscode/
+*.sublime-workspace
+*.sublime-project
+*.iml
+*.ipr
+*.iws
 
-# IDE / Editor folders
-/.idea/
-/.vscode/
-
-# OS junk
+# OS-specific files
 .DS_Store
 Thumbs.db
+
+# PHPUnit
+.phpunit.result.cache
 
 # Logs
 *.log
 
-# Treat all files as text, auto‑detecting
+# Node / front-end (in case you add npm for docs/testing)
+node_modules/
+npm-debug.log
+yarn-debug.log
+yarn-error.log
+
+# Pint cache
+.pint.cache
+
+# Git text and line endings
 * text=auto
 
-# Force Unix (LF) line endings for these source files:
+# Enforce LF endings for source files
 *.php     text eol=lf
 *.md      text eol=lf
+*.json    text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.js      text eol=lf
+*.ts      text eol=lf
+*.css     text eol=lf
+*.scss    text eol=lf
+*.vue     text eol=lf

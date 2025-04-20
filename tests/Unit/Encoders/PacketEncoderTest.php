@@ -4,7 +4,7 @@ use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
 use Rizwan\LaravelFcgiClient\Enums\PacketType;
 
 beforeEach(function () {
-    $this->encoder = new PacketEncoder();
+    $this->encoder = new PacketEncoder;
 });
 
 test('encodes packet with correct structure', function () {

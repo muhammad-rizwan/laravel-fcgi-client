@@ -4,21 +4,31 @@ namespace Rizwan\LaravelFcgiClient\Client;
 
 use Illuminate\Support\Facades\Log;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
-use Rizwan\LaravelFcgiClient\Encoders\{NameValuePairEncoder, PacketEncoder};
-use Rizwan\LaravelFcgiClient\Enums\{PacketType, ProtocolStatus, RequestRole, SocketStatus};
-use Rizwan\LaravelFcgiClient\Exceptions\{ConnectionException, ReadException, TimeoutException, WriteException};
+use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
+use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
+use Rizwan\LaravelFcgiClient\Enums\PacketType;
+use Rizwan\LaravelFcgiClient\Enums\ProtocolStatus;
+use Rizwan\LaravelFcgiClient\Enums\RequestRole;
+use Rizwan\LaravelFcgiClient\Enums\SocketStatus;
+use Rizwan\LaravelFcgiClient\Exceptions\ConnectionException;
+use Rizwan\LaravelFcgiClient\Exceptions\ReadException;
+use Rizwan\LaravelFcgiClient\Exceptions\TimeoutException;
+use Rizwan\LaravelFcgiClient\Exceptions\WriteException;
 use Rizwan\LaravelFcgiClient\Requests\Request;
 use Rizwan\LaravelFcgiClient\Responses\Response;
-use Throwable;
 
 final class Socket
 {
     private const HEADER_LEN = 8;
+
     private const REQ_MAX_CONTENT_SIZE = 65535;
 
     private mixed $resource = null;
+
     private SocketStatus $status = SocketStatus::INIT;
+
     private float $startTime = 0;
+
     private ?Response $response = null;
 
     public function __construct(
@@ -40,7 +50,7 @@ final class Socket
      */
     public function sendRequest(Request $request): void
     {
-        if (!$this->status->isAvailable()) {
+        if (! $this->status->isAvailable()) {
             throw new ConnectionException('Trying to use a socket that is not idle');
         }
 
@@ -50,14 +60,14 @@ final class Socket
         $connectStart = microtime(true);
         $this->connect();
         $connectEnd = microtime(true);
-        Log::debug('[FCGI] Connected in ' . round(($connectEnd - $connectStart) * 1000, 2) . 'ms');
+        Log::debug('[FCGI] Connected in '.round(($connectEnd - $connectStart) * 1000, 2).'ms');
 
         $packets = $this->buildRequestPackets($request);
 
         $writeStart = microtime(true);
         $this->write($packets);
         $writeEnd = microtime(true);
-        Log::debug('[FCGI] Request written in ' . round(($writeEnd - $writeStart) * 1000, 2) . 'ms');
+        Log::debug('[FCGI] Request written in '.round(($writeEnd - $writeStart) * 1000, 2).'ms');
 
         $this->status = SocketStatus::BUSY;
         $this->startTime = microtime(true);
@@ -77,7 +87,7 @@ final class Socket
 
         $packets = $this->packetEncoder->encodePacket(
             PacketType::BEGIN_REQUEST,
-            chr(0) . chr(RequestRole::RESPONDER->value) . chr(1) . str_repeat(chr(0), 5),
+            chr(0).chr(RequestRole::RESPONDER->value).chr(1).str_repeat(chr(0), 5),
             $requestId
         );
 
@@ -97,7 +107,7 @@ final class Socket
             }
         }
 
-        return $packets . $this->packetEncoder->encodePacket(PacketType::STDIN, '', $requestId);
+        return $packets.$this->packetEncoder->encodePacket(PacketType::STDIN, '', $requestId);
     }
 
     private function write(string $data): void
@@ -109,7 +119,7 @@ final class Socket
         $writeResult = @fwrite($this->resource, $data);
         $flushResult = @fflush($this->resource);
 
-        if ($writeResult === false || !$flushResult) {
+        if ($writeResult === false || ! $flushResult) {
             $meta = stream_get_meta_data($this->resource);
             throw $meta['timed_out']
                 ? new TimeoutException('Write timed out')
@@ -145,7 +155,6 @@ final class Socket
             }
         }
 
-
         $this->checkResponseErrors($packet, $error);
 
         $this->response = new Response(
@@ -177,7 +186,7 @@ final class Socket
         }
 
         $header = fread($this->resource, self::HEADER_LEN);
-        if (!$header) {
+        if (! $header) {
             return null;
         }
 
@@ -221,8 +230,8 @@ final class Socket
             match ($status) {
                 ProtocolStatus::REQUEST_COMPLETE->value => null,
                 ProtocolStatus::CANT_MPX_CONN->value => throw new WriteException("This app can't multiplex [CANT_MPX_CONN]"),
-                ProtocolStatus::OVERLOADED->value => throw new WriteException("New request rejected; too busy [OVERLOADED]"),
-                ProtocolStatus::UNKNOWN_ROLE->value => throw new WriteException("Role value not known [UNKNOWN_ROLE]"),
+                ProtocolStatus::OVERLOADED->value => throw new WriteException('New request rejected; too busy [OVERLOADED]'),
+                ProtocolStatus::UNKNOWN_ROLE->value => throw new WriteException('Role value not known [UNKNOWN_ROLE]'),
                 default => throw new ReadException("Unknown protocol status: $status"),
             };
         }

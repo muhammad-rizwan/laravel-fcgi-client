@@ -2,6 +2,4 @@
 
 namespace Rizwan\LaravelFcgiClient\Exceptions;
 
-class ReadException extends FastCGIException
-{
-}
+class ReadException extends FastCGIException {}

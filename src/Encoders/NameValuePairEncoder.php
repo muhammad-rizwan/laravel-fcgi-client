@@ -9,7 +9,7 @@ class NameValuePairEncoder
         $encoded = '';
 
         foreach ($pairs as $key => $value) {
-            $encoded .= $this->encodePair((string)$key, (string)$value);
+            $encoded .= $this->encodePair((string) $key, (string) $value);
         }
 
         return $encoded;
@@ -24,21 +24,21 @@ class NameValuePairEncoder
             $nameValuePair = chr($nameLength);
         } else {
             $nameValuePair = chr(($nameLength >> 24) | 0x80)
-                . chr(($nameLength >> 16) & 0xFF)
-                . chr(($nameLength >> 8) & 0xFF)
-                . chr($nameLength & 0xFF);
+                .chr(($nameLength >> 16) & 0xFF)
+                .chr(($nameLength >> 8) & 0xFF)
+                .chr($nameLength & 0xFF);
         }
 
         if ($valueLength < 128) {
             $nameValuePair .= chr($valueLength);
         } else {
             $nameValuePair .= chr(($valueLength >> 24) | 0x80)
-                . chr(($valueLength >> 16) & 0xFF)
-                . chr(($valueLength >> 8) & 0xFF)
-                . chr($valueLength & 0xFF);
+                .chr(($valueLength >> 16) & 0xFF)
+                .chr(($valueLength >> 8) & 0xFF)
+                .chr($valueLength & 0xFF);
         }
 
-        return $nameValuePair . $name . $value;
+        return $nameValuePair.$name.$value;
     }
 
     public function decodePairs(string $data, int $length = -1): array

@@ -14,43 +14,57 @@ use Throwable;
 class FCGIManager
 {
     private ?NetworkConnection $connection = null;
+
     private string $scriptPath = '';
+
     private string $uri = '';
 
     private array $headers = [];
+
     private array $serverParams = [];
+
     private array $customVars = [];
+
     private array $query = [];
+
     private array $payload = [];
+
     private ?string $rawBody = null;
+
     private string $rawBodyType = 'text/plain';
 
     private int $connectTimeout = 5000;
+
     private int $readTimeout = 5000;
 
     private int $maxRetries = 0;
+
     private int $retryDelayMs = 0;
+
     private ?Closure $retryWhen = null;
 
     public function __construct(
-        private readonly Client $client = new Client(),
+        private readonly Client $client = new Client,
     ) {}
 
     public function withHeaders(array $headers): self
     {
         $this->headers = $headers;
+
         return $this;
     }
 
     public function withQuery(array $query): self
     {
         $this->query = $query;
+
         return $this;
     }
 
     public function withPayload(array $data): self
     {
         $this->payload = $data;
+
         return $this;
     }
 
@@ -58,36 +72,42 @@ class FCGIManager
     {
         $this->rawBody = $body;
         $this->rawBodyType = $type;
+
         return $this;
     }
 
     public function withUri(string $uri): self
     {
         $this->uri = $uri;
+
         return $this;
     }
 
     public function withServerParams(array $params): self
     {
         $this->serverParams = $params;
+
         return $this;
     }
 
     public function withCustomVars(array $vars): self
     {
         $this->customVars = $vars;
+
         return $this;
     }
 
     public function timeout(int $ms): self
     {
         $this->readTimeout = $ms;
+
         return $this;
     }
 
     public function connectTimeout(int $ms): self
     {
         $this->connectTimeout = $ms;
+
         return $this;
     }
 
@@ -96,6 +116,7 @@ class FCGIManager
         $this->maxRetries = $times;
         $this->retryDelayMs = $sleepMs;
         $this->retryWhen = $when instanceof Closure ? $when : ($when ? Closure::fromCallable($when) : null);
+
         return $this;
     }
 
@@ -118,7 +139,7 @@ class FCGIManager
 
         $this->scriptPath = $scriptPath;
 
-        $builder = (new RequestBuilder())
+        $builder = (new RequestBuilder)
             ->method($method)
             ->path($this->scriptPath)
             ->withHeaders($this->headers);
@@ -129,13 +150,13 @@ class FCGIManager
             $builder->acceptJson()->json($this->payload);
         } elseif ($asForm) {
             $builder->asForm()->formData($this->payload);
-        } elseif (!empty($this->rawBody)) {
+        } elseif (! empty($this->rawBody)) {
             $builder->withBody($this->rawBody, $this->rawBodyType);
         }
 
         $request = $builder->build();
 
-        if (!empty($this->uri)) {
+        if (! empty($this->uri)) {
             $request = $request->withServerParam('REQUEST_URI', $this->uri)
                 ->withServerParam('SCRIPT_NAME', $this->uri);
         }
@@ -211,6 +232,6 @@ class FCGIManager
             $closures[$key] = fn () => $request;
         }
 
-        return Concurrency::concurrent($closures);
+        return Concurrency::run($closures);
     }
 }

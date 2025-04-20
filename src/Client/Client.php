@@ -5,22 +5,20 @@ namespace Rizwan\LaravelFcgiClient\Client;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
 use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
-use Rizwan\LaravelFcgiClient\Exceptions\{ConnectionException, ReadException, TimeoutException, WriteException};
+use Rizwan\LaravelFcgiClient\Exceptions\ConnectionException;
+use Rizwan\LaravelFcgiClient\Exceptions\ReadException;
+use Rizwan\LaravelFcgiClient\Exceptions\TimeoutException;
+use Rizwan\LaravelFcgiClient\Exceptions\WriteException;
 use Rizwan\LaravelFcgiClient\Requests\Request;
 use Rizwan\LaravelFcgiClient\Responses\Response;
 use Throwable;
 
 final class Client
 {
-    /**
-     * @param SocketCollection $sockets
-     * @param PacketEncoder $packetEncoder
-     * @param NameValuePairEncoder $nameValuePairEncoder
-     */
     public function __construct(
-        private SocketCollection $sockets = new SocketCollection(),
-        private PacketEncoder $packetEncoder = new PacketEncoder(),
-        private NameValuePairEncoder $nameValuePairEncoder = new NameValuePairEncoder(),
+        private SocketCollection $sockets = new SocketCollection,
+        private PacketEncoder $packetEncoder = new PacketEncoder,
+        private NameValuePairEncoder $nameValuePairEncoder = new NameValuePairEncoder,
     ) {}
 
     /**
@@ -40,6 +38,7 @@ final class Client
 
         try {
             $socket->sendRequest($request);
+
             return $socket->fetchResponse();
         } catch (Throwable $e) {
             $this->sockets->remove($socket->getId());

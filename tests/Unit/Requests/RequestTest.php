@@ -1,8 +1,8 @@
 <?php
 
 use Rizwan\LaravelFcgiClient\Enums\RequestMethod;
-use Rizwan\LaravelFcgiClient\Requests\Request;
 use Rizwan\LaravelFcgiClient\RequestContents\UrlEncodedContent;
+use Rizwan\LaravelFcgiClient\Requests\Request;
 
 test('request has correct method and script path', function () {
     $method = RequestMethod::GET;
@@ -56,7 +56,7 @@ test('request can register callbacks', function () {
     $scriptPath = '/path/to/script.php';
     $request = new Request($method, $scriptPath);
 
-    $callback = fn() => true;
+    $callback = fn () => true;
     $requestWithCallback = $request->addResponseCallback($callback);
 
     expect($requestWithCallback->getResponseCallbacks())->toContain($callback);

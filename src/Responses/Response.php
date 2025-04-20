@@ -3,15 +3,17 @@
 namespace Rizwan\LaravelFcgiClient\Responses;
 
 use http\Exception\RuntimeException;
-use Illuminate\Support\Arr;
 
 class Response implements ResponseInterface
 {
     private const HEADER_PATTERN = '#^([^:]+):(.*)$#';
 
     private array $normalizedHeaders = [];
+
     private array $headers = [];
+
     private string $body = '';
+
     private ?int $statusCode = null;
 
     public function __construct(
@@ -29,7 +31,7 @@ class Response implements ResponseInterface
 
         foreach ($lines as $i => $line) {
             $matches = [];
-            if (!preg_match(self::HEADER_PATTERN, $line, $matches)) {
+            if (! preg_match(self::HEADER_PATTERN, $line, $matches)) {
                 break;
             }
 
@@ -59,6 +61,7 @@ class Response implements ResponseInterface
     private function extractStatusCode(): ?int
     {
         $line = $this->getHeaderLine('Status');
+
         return $line ? (int) substr($line, 0, 3) : null;
     }
 
@@ -137,7 +140,7 @@ class Response implements ResponseInterface
         return $this->status() >= 500;
     }
 
-    public function json(string $key = null, mixed $default = null): mixed
+    public function json(?string $key = null, mixed $default = null): mixed
     {
         $decoded = json_decode($this->body, true);
 
@@ -183,7 +186,7 @@ class Response implements ResponseInterface
         $shouldThrow = is_callable($condition) ? $condition($this) : $condition;
 
         if ($shouldThrow) {
-            $exception = $throwCallback ? $throwCallback($this) : new RuntimeException("FastCGI response condition failed.");
+            $exception = $throwCallback ? $throwCallback($this) : new RuntimeException('FastCGI response condition failed.');
             throw $exception;
         }
 

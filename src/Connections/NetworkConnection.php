@@ -7,10 +7,9 @@ use Rizwan\LaravelFcgiClient\Exceptions\ConnectionException;
 final class NetworkConnection
 {
     /**
-     * @param string $host
-     * @param int $port Port for FastCGI (default: 9000)
-     * @param int $connectTimeout Timeout in milliseconds
-     * @param int $readWriteTimeout Timeout in milliseconds
+     * @param  int  $port  Port for FastCGI (default: 9000)
+     * @param  int  $connectTimeout  Timeout in milliseconds
+     * @param  int  $readWriteTimeout  Timeout in milliseconds
      */
     public function __construct(
         private string $host,
@@ -19,25 +18,16 @@ final class NetworkConnection
         private int $readWriteTimeout = 5000,
     ) {}
 
-    /**
-     * @return string
-     */
     public function getSocketAddress(): string
     {
         return sprintf('tcp://%s:%d', $this->host, $this->port);
     }
 
-    /**
-     * @return int
-     */
     public function getConnectTimeout(): int
     {
         return $this->connectTimeout;
     }
 
-    /**
-     * @return int
-     */
     public function getReadWriteTimeout(): int
     {
         return $this->readWriteTimeout;
@@ -47,6 +37,7 @@ final class NetworkConnection
      * Establishes a stream socket connection.
      *
      * @return resource
+     *
      * @throws ConnectionException
      */
     public function connect(): mixed

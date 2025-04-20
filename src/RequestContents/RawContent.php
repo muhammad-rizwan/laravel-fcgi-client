@@ -1,4 +1,5 @@
 <?php
+
 namespace Rizwan\LaravelFcgiClient\RequestContents;
 
 class RawContent implements ContentInterface

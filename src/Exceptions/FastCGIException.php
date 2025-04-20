@@ -4,6 +4,4 @@ namespace Rizwan\LaravelFcgiClient\Exceptions;
 
 use Exception;
 
-class FastCGIException extends Exception
-{
-}
+class FastCGIException extends Exception {}

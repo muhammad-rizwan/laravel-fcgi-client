@@ -8,6 +8,7 @@ use Rizwan\LaravelFcgiClient\RequestContents\ContentInterface;
 class Request
 {
     private array $serverParams = [];
+
     private array $customVars = [];
 
     public function __construct(
@@ -17,11 +18,11 @@ class Request
         private readonly array $defaults = []
     ) {
         $this->serverParams = [
-            'REQUEST_METHOD'  => $this->method->value,
+            'REQUEST_METHOD' => $this->method->value,
             'SCRIPT_FILENAME' => $this->scriptPath,
             'SERVER_PROTOCOL' => $this->defaults['SERVER_PROTOCOL'] ?? 'HTTP/1.1',
-            'CONTENT_TYPE'    => $this->content?->getContentType() ?? 'application/x-www-form-urlencoded',
-            'CONTENT_LENGTH'  => $this->content ? strlen($this->content->getContent()) : 0,
+            'CONTENT_TYPE' => $this->content?->getContentType() ?? 'application/x-www-form-urlencoded',
+            'CONTENT_LENGTH' => $this->content ? strlen($this->content->getContent()) : 0,
         ];
 
     }
@@ -55,6 +56,7 @@ class Request
     {
         $clone = clone $this;
         $clone->serverParams[$key] = $value;
+
         return $clone;
     }
 
@@ -62,6 +64,7 @@ class Request
     {
         $clone = clone $this;
         $clone->customVars[$key] = $value;
+
         return $clone;
     }
 }
