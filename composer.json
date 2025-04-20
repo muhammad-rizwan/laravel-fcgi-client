@@ -1,6 +1,6 @@
 {
   "name": "rizwan/laravel-fcgi-client",
-  "description": "A Laravel package for communicating with LaravelFcgiClient servers",
+  "description": "A Laravel package for communicating with FastCGI-compatible servers (like PHP-FPM)",
   "type": "library",
   "license": "MIT",
   "authors": [
@@ -9,6 +9,20 @@
       "email": "rizwan.ciit@hotmail.com"
     }
   ],
+  "keywords": [
+    "laravel",
+    "fastcgi",
+    "php-fpm",
+    "client",
+    "http",
+    "fcgi",
+    "laravel-package"
+  ],
+  "homepage": "https://github.com/muhammad-rizwan/laravel-fcgi-client",
+  "support": {
+    "issues": "https://github.com/muhammad-rizwan/laravel-fcgi-client/issues",
+    "source": "https://github.com/muhammad-rizwan/laravel-fcgi-client"
+  },
   "require": {
     "php": "^8.1",
     "illuminate/support": "^9.0|^10.0|^11.0|^12.0"
@@ -16,7 +30,6 @@
   "require-dev": {
     "pestphp/pest": "^2.0",
     "pestphp/pest-plugin-laravel": "^2.0",
-    "orchestra/testbench": "^8.0",
     "laravel/pint": "^1.22"
   },
   "autoload": {
@@ -45,5 +58,8 @@
     "allow-plugins": {
       "pestphp/pest-plugin": true
     }
+  },
+  "scripts": {
+    "format": "pint"
   }
 }
