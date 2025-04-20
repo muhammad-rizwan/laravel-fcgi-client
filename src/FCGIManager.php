@@ -9,6 +9,7 @@ use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Enums\RequestMethod;
 use Rizwan\LaravelFcgiClient\Requests\RequestBuilder;
 use Rizwan\LaravelFcgiClient\Responses\Response;
+use Rizwan\LaravelFcgiClient\Support\HeaderBag;
 
 class FCGIManager
 {
@@ -17,6 +18,7 @@ class FCGIManager
     private string $uri = '';
     private array $serverParams = [];
     private array $customVars = [];
+    private array $headers = [];
     private int $connectTimeout = 5000;
     private int $readTimeout = 5000;
 
@@ -33,7 +35,8 @@ class FCGIManager
         string $scriptPath,
         RequestMethod $method,
         array $options = [],
-        bool $isJson = false
+        bool $isJson = false,
+        bool $asForm = false
     ): Response {
         $port ??= 9000;
 
@@ -48,17 +51,19 @@ class FCGIManager
         $this->uri = $options['uri'] ?? '';
         $this->serverParams = $options['server_params'] ?? [];
         $this->customVars = $options['custom_vars'] ?? [];
+        $this->headers = $options['headers'] ?? [];
 
         $builder = (new RequestBuilder())
             ->method($method)
-            ->path($this->scriptPath);
+            ->path($this->scriptPath)
+            ->withHeaders($this->headers);
 
         if ($method === RequestMethod::GET) {
             $builder->query($options['query'] ?? []);
         } elseif ($isJson) {
-            $builder->json($options['data'] ?? []);
-        } elseif (in_array($method, [RequestMethod::POST, RequestMethod::PUT, RequestMethod::PATCH])) {
-            $builder->formData($options['data'] ?? []);
+            $builder->acceptJson()->json($options['data'] ?? []);
+        } elseif ($asForm) {
+            $builder->asForm()->formData($options['data'] ?? []);
         }
 
         $request = $builder->build();
@@ -104,16 +109,24 @@ class FCGIManager
         return $this->sendRequest($host, $port, $scriptPath, RequestMethod::DELETE, $options);
     }
 
+    /**
+     * Send a JSON request (Content-Type: application/json)
+     */
     public function json(string $host, string $scriptPath, array $options = [], ?int $port = null): Response
     {
-        return $this->sendRequest($host, $port, $scriptPath, RequestMethod::POST, $options, true);
+        return $this->sendRequest($host, $port, $scriptPath, RequestMethod::POST, $options, isJson: true);
+    }
+
+    /**
+     * Send a form-encoded request (Content-Type: application/x-www-form-urlencoded)
+     */
+    public function form(string $host, string $scriptPath, array $options = [], ?int $port = null): Response
+    {
+        return $this->sendRequest($host, $port, $scriptPath, RequestMethod::POST, $options, asForm: true);
     }
 
     /**
      * Execute multiple FastCGI requests concurrently.
-     *
-     * @param Closure $callback A callback that returns an array of requests.
-     * @return array
      */
     public function pool(Closure $callback): array
     {

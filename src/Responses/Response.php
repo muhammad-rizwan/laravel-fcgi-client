@@ -2,9 +2,6 @@
 
 namespace Rizwan\LaravelFcgiClient\Responses;
 
-/**
- * Represents a parsed FastCGI response.
- */
 class Response implements ResponseInterface
 {
     private const HEADER_PATTERN = '#^([^:]+):(.*)$#';
@@ -12,6 +9,7 @@ class Response implements ResponseInterface
     private array $normalizedHeaders = [];
     private array $headers = [];
     private string $body = '';
+    private ?int $statusCode = null;
 
     public function __construct(
         private readonly string $output,
@@ -21,15 +19,13 @@ class Response implements ResponseInterface
         $this->parseHeadersAndBody();
     }
 
-    /**
-     * Parse the headers and body from FastCGI STDOUT output.
-     */
     private function parseHeadersAndBody(): void
     {
         $lines = explode(PHP_EOL, $this->output);
         $offset = 0;
 
         foreach ($lines as $i => $line) {
+            $matches = [];
             if (!preg_match(self::HEADER_PATTERN, $line, $matches)) {
                 break;
             }
@@ -43,22 +39,24 @@ class Response implements ResponseInterface
         }
 
         $this->body = implode(PHP_EOL, array_slice($lines, $offset + 2));
+        $this->statusCode = $this->extractStatusCode();
     }
 
-    private function addRawHeader(string $headerKey, string $headerValue): void
+    private function addRawHeader(string $headerKey, string $value): void
     {
-        $this->headers[$headerKey][] = $headerValue;
+        $this->headers[$headerKey][] = $value;
     }
 
-    private function addNormalizedHeader(string $headerKey, string $headerValue): void
+    private function addNormalizedHeader(string $headerKey, string $value): void
     {
         $key = strtolower($headerKey);
-        $this->normalizedHeaders[$key][] = $headerValue;
+        $this->normalizedHeaders[$key][] = $value;
     }
 
-    public function getHeaders(): array
+    private function extractStatusCode(): ?int
     {
-        return $this->headers;
+        $line = $this->getHeaderLine('Status');
+        return $line ? (int) substr($line, 0, 3) : null;
     }
 
     public function getHeader(string $headerKey): array
@@ -69,6 +67,11 @@ class Response implements ResponseInterface
     public function getHeaderLine(string $headerKey): string
     {
         return implode(', ', $this->getHeader($headerKey));
+    }
+
+    public function getHeaders(): array
+    {
+        return $this->headers;
     }
 
     public function getBody(): string
@@ -91,32 +94,38 @@ class Response implements ResponseInterface
         return $this->duration;
     }
 
-    public function getStatusCode(): ?int
-    {
-        $status = $this->getHeaderLine('Status');
-
-        if (preg_match('/^\s*(\d{3})/', $status, $matches)) {
-            return (int) $matches[1];
-        }
-
-        return null;
-    }
-
     public function successful(): bool
     {
-        $code = $this->getStatusCode();
-        return empty($this->error) && ($code === null || $code < 400);
+        return empty($this->error) && $this->status() < 400;
     }
 
-    public function isClientError(): bool
+    public function status(): ?int
     {
-        $code = $this->getStatusCode();
-        return $code >= 400 && $code < 500;
+        return $this->statusCode;
     }
 
-    public function isServerError(): bool
+    public function ok(): bool
     {
-        $code = $this->getStatusCode();
-        return $code >= 500;
+        return $this->status() === 200;
+    }
+
+    public function unauthorized(): bool
+    {
+        return $this->status() === 401;
+    }
+
+    public function forbidden(): bool
+    {
+        return $this->status() === 403;
+    }
+
+    public function notFound(): bool
+    {
+        return $this->status() === 404;
+    }
+
+    public function serverError(): bool
+    {
+        return $this->status() >= 500;
     }
 }
