@@ -3,13 +3,12 @@
 namespace Rizwan\LaravelFcgiClient\Client;
 
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
-use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
-use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
+use Rizwan\LaravelFcgiClient\Encoders\{NameValuePairEncoder, PacketEncoder};
 use Rizwan\LaravelFcgiClient\Exceptions\WriteException;
 
-class SocketCollection
+final class SocketCollection
 {
-    /** @var Socket[] */
+    /** @var array<int, Socket> */
     private array $sockets = [];
 
     /**
@@ -18,20 +17,13 @@ class SocketCollection
     public function new(
         NetworkConnection $connection,
         PacketEncoder $packetEncoder,
-        NameValuePairEncoder $nameValuePairEncoder
+        NameValuePairEncoder $nameValuePairEncoder,
     ): Socket {
-        // Try to create a unique socket ID
         for ($i = 0; $i < 10; $i++) {
             $socketId = SocketId::generate();
 
             if (!$this->exists($socketId->getValue())) {
-                $socket = new Socket(
-                    $socketId,
-                    $connection,
-                    $packetEncoder,
-                    $nameValuePairEncoder
-                );
-
+                $socket = new Socket($socketId, $connection, $packetEncoder, $nameValuePairEncoder);
                 $this->sockets[$socketId->getValue()] = $socket;
                 return $socket;
             }
@@ -49,5 +41,4 @@ class SocketCollection
     {
         unset($this->sockets[$socketId]);
     }
-
 }

@@ -5,27 +5,20 @@ namespace Rizwan\LaravelFcgiClient\Client;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
 use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
-use Rizwan\LaravelFcgiClient\Enums\PacketType;
-use Rizwan\LaravelFcgiClient\Enums\ProtocolStatus;
-use Rizwan\LaravelFcgiClient\Enums\RequestRole;
-use Rizwan\LaravelFcgiClient\Exceptions\ConnectionException;
-use Rizwan\LaravelFcgiClient\Exceptions\ReadException;
-use Rizwan\LaravelFcgiClient\Exceptions\TimeoutException;
-use Rizwan\LaravelFcgiClient\Exceptions\WriteException;
+use Rizwan\LaravelFcgiClient\Enums\{PacketType, ProtocolStatus, RequestRole, SocketStatus};
+use Rizwan\LaravelFcgiClient\Exceptions\{ConnectionException, ReadException, TimeoutException, WriteException};
 use Rizwan\LaravelFcgiClient\Requests\Request;
 use Rizwan\LaravelFcgiClient\Responses\Response;
-use Throwable;
+use Illuminate\Support\Facades\Log;
 
-class Socket
+final class Socket
 {
-    private const HEADER_LEN = 8;
-    private const REQ_MAX_CONTENT_SIZE = 65535;
-    private const SOCK_STATE_INIT = 1;
-    private const SOCK_STATE_BUSY = 2;
-    private const SOCK_STATE_IDLE = 3;
+    private const int HEADER_LEN = 8;
+    private const int REQ_MAX_CONTENT_SIZE = 65535;
 
     private mixed $resource = null;
-    private int $status;
+    private SocketStatus $status = SocketStatus::INIT;
+
     private float $startTime = 0;
     private ?Response $response = null;
 
@@ -33,39 +26,46 @@ class Socket
         private readonly SocketId $id,
         private readonly NetworkConnection $connection,
         private readonly PacketEncoder $packetEncoder,
-        private readonly NameValuePairEncoder $nameValuePairEncoder
-    ) {
-        $this->status = self::SOCK_STATE_INIT;
-    }
+        private readonly NameValuePairEncoder $nameValuePairEncoder,
+    ) {}
 
     public function getId(): int
     {
         return $this->id->getValue();
     }
 
-    public function isIdle(): bool
-    {
-        return $this->status === self::SOCK_STATE_INIT || $this->status === self::SOCK_STATE_IDLE;
-    }
-
+    /**
+     * @throws ConnectionException
+     * @throws WriteException
+     * @throws TimeoutException
+     */
     public function sendRequest(Request $request): void
     {
-        if (!$this->isIdle()) {
+        if (!$this->status->isAvailable()) {
             throw new ConnectionException('Trying to use a socket that is not idle');
         }
 
         $this->response = null;
-        $this->responseCallbacks = $request->getResponseCallbacks();
-        $this->failureCallbacks = $request->getFailureCallbacks();
 
+        Log::debug("[FCGI] Connecting to FastCGI socket...");
+        $connectStart = microtime(true);
         $this->connect();
+        $connectEnd = microtime(true);
+
+        Log::debug("[FCGI] Connected in " . round(($connectEnd - $connectStart) * 1000, 2) . "ms");
 
         $requestPackets = $this->buildRequestPackets($request);
-        $this->write($requestPackets);
 
-        $this->status = self::SOCK_STATE_BUSY;
+        $writeStart = microtime(true);
+        $this->write($requestPackets);
+        $writeEnd = microtime(true);
+
+        Log::debug("[FCGI] Request written in " . round(($writeEnd - $writeStart) * 1000, 2) . "ms");
+
+        $this->status = SocketStatus::BUSY;
         $this->startTime = microtime(true);
     }
+
 
     private function connect(): void
     {
@@ -74,62 +74,35 @@ class Socket
         }
 
         $this->resource = $this->connection->connect();
-        $this->status = self::SOCK_STATE_IDLE;
+        $this->status = SocketStatus::IDLE;
     }
 
     private function buildRequestPackets(Request $request): string
     {
-        // Begin request packet
-        $requestPackets = $this->packetEncoder->encodePacket(
+        $requestId = $this->id->getValue();
+        $packets = $this->packetEncoder->encodePacket(
             PacketType::BEGIN_REQUEST,
             chr(0) . chr(RequestRole::RESPONDER->value) . chr(1) . str_repeat(chr(0), 5),
-            $this->id->getValue()
+            $requestId
         );
 
-        // Parameters
-        $paramsRequest = $this->nameValuePairEncoder->encodePairs($request->getParams());
+        $params = $this->nameValuePairEncoder->encodePairs($request->getParams());
 
-        if (!empty($paramsRequest)) {
-            $requestPackets .= $this->packetEncoder->encodePacket(
-                PacketType::PARAMS,
-                $paramsRequest,
-                $this->id->getValue()
-            );
+        if ($params !== '') {
+            $packets .= $this->packetEncoder->encodePacket(PacketType::PARAMS, $params, $requestId);
         }
 
-        // Empty params packet to terminate params
-        $requestPackets .= $this->packetEncoder->encodePacket(
-            PacketType::PARAMS,
-            '',
-            $this->id->getValue()
-        );
+        $packets .= $this->packetEncoder->encodePacket(PacketType::PARAMS, '', $requestId);
 
-        // Content if available
-        $content = $request->getContent();
-        if ($content !== null) {
-            $contentString = $content->getContent();
-            $offset = 0;
-            $contentLength = strlen($contentString);
-
-            while ($offset < $contentLength) {
-                $chunk = substr($contentString, $offset, self::REQ_MAX_CONTENT_SIZE);
-                $requestPackets .= $this->packetEncoder->encodePacket(
-                    PacketType::STDIN,
-                    $chunk,
-                    $this->id->getValue()
-                );
-                $offset += self::REQ_MAX_CONTENT_SIZE;
+        $content = $request->getContent()?->getContent();
+        if ($content) {
+            for ($offset = 0, $length = strlen($content); $offset < $length; $offset += self::REQ_MAX_CONTENT_SIZE) {
+                $chunk = substr($content, $offset, self::REQ_MAX_CONTENT_SIZE);
+                $packets .= $this->packetEncoder->encodePacket(PacketType::STDIN, $chunk, $requestId);
             }
         }
 
-        // Empty stdin packet to terminate stdin
-        $requestPackets .= $this->packetEncoder->encodePacket(
-            PacketType::STDIN,
-            '',
-            $this->id->getValue()
-        );
-
-        return $requestPackets;
+        return $packets . $this->packetEncoder->encodePacket(PacketType::STDIN, '', $requestId);
     }
 
     private function write(string $data): void
@@ -142,12 +115,10 @@ class Socket
         $flushResult = @fflush($this->resource);
 
         if ($writeResult === false || !$flushResult) {
-            $metadata = stream_get_meta_data($this->resource);
-            if ($metadata['timed_out']) {
-                throw new TimeoutException('Write timed out');
-            }
-
-            throw new WriteException('Failed to write request to socket [broken pipe]');
+            $meta = stream_get_meta_data($this->resource);
+            throw $meta['timed_out']
+                ? new TimeoutException('Write timed out')
+                : new WriteException('Failed to write request to socket [broken pipe]');
         }
     }
 
@@ -158,67 +129,47 @@ class Socket
      */
     public function fetchResponse(?int $timeoutMs = null): Response
     {
-        if ($this->response !== null) {
+        if ($this->response) {
             return $this->response;
         }
 
-        // Set timeout
-        $timeoutMs = $timeoutMs ?? $this->connection->getReadWriteTimeout();
-        $this->setStreamTimeout($timeoutMs);
+        $this->setStreamTimeout($timeoutMs ?? $this->connection->getReadWriteTimeout());
 
-        $error = '';
         $output = '';
+        $error = '';
+        $packet = null;
 
-        do {
-            $packet = $this->readPacket();
+        while ($packet = $this->readPacket()) {
+            $type = $packet['type'];
 
-            if ($packet === null) {
-                break;
-            }
-
-            $packetType = $packet['type'];
-
-            if ($packetType === PacketType::STDERR->value) {
-                $error .= $packet['content'];
-                continue;
-            }
-
-            if ($packetType === PacketType::STDOUT->value) {
+            if ($type === PacketType::STDOUT->value) {
                 $output .= $packet['content'];
-                continue;
-            }
-
-            if ($packetType === PacketType::END_REQUEST->value &&
+            } elseif ($type === PacketType::STDERR->value) {
+                $error .= $packet['content'];
+            } elseif ($type === PacketType::END_REQUEST->value &&
                 $packet['requestId'] === $this->id->getValue()) {
                 break;
             }
-
-        } while ($packet !== null);
+        }
 
         $this->checkResponseErrors($packet, $error);
 
-        $this->response = new Response(
-            $output,
-            $error,
-            microtime(true) - $this->startTime
-        );
-
-        $this->status = self::SOCK_STATE_IDLE;
+        $this->response = new Response($output, $error, microtime(true) - $this->startTime);
+        $this->status = SocketStatus::IDLE;
 
         return $this->response;
     }
 
+
     private function setStreamTimeout(int $timeoutMs): void
     {
-        if (!is_resource($this->resource)) {
-            return;
+        if (is_resource($this->resource)) {
+            stream_set_timeout(
+                $this->resource,
+                intdiv($timeoutMs, 1000),
+                ($timeoutMs % 1000) * 1000
+            );
         }
-
-        stream_set_timeout(
-            $this->resource,
-            (int)floor($timeoutMs / 1000),
-            ($timeoutMs % 1000) * 1000
-        );
     }
 
     private function readPacket(): ?array
@@ -228,7 +179,6 @@ class Socket
         }
 
         $header = fread($this->resource, self::HEADER_LEN);
-
         if (!$header) {
             return null;
         }
@@ -237,11 +187,10 @@ class Socket
         $packet['content'] = '';
 
         if ($packet['contentLength'] > 0) {
-            $length = $packet['contentLength'];
-
-            while ($length > 0 && ($buffer = fread($this->resource, $length)) !== false) {
+            $remaining = $packet['contentLength'];
+            while ($remaining > 0 && ($buffer = fread($this->resource, $remaining)) !== false) {
                 $packet['content'] .= $buffer;
-                $length -= strlen($buffer);
+                $remaining -= strlen($buffer);
             }
         }
 
@@ -268,18 +217,14 @@ class Socket
             throw new ReadException('Read failed');
         }
 
-        if ($packet !== null && isset($packet['content']) && strlen($packet['content']) >= 5) {
+        if (isset($packet['content']) && strlen($packet['content']) >= 5) {
             $status = ord($packet['content'][4]);
 
-            // Check for protocol status errors
             match ($status) {
                 ProtocolStatus::REQUEST_COMPLETE->value => null,
-                ProtocolStatus::CANT_MPX_CONN->value =>
-                throw new WriteException("This app can't multiplex [CANT_MPX_CONN]"),
-                ProtocolStatus::OVERLOADED->value =>
-                throw new WriteException("New request rejected; too busy [OVERLOADED]"),
-                ProtocolStatus::UNKNOWN_ROLE->value =>
-                throw new WriteException("Role value not known [UNKNOWN_ROLE]"),
+                ProtocolStatus::CANT_MPX_CONN->value => throw new WriteException("This app can't multiplex [CANT_MPX_CONN]"),
+                ProtocolStatus::OVERLOADED->value => throw new WriteException("New request rejected; too busy [OVERLOADED]"),
+                ProtocolStatus::UNKNOWN_ROLE->value => throw new WriteException("Role value not known [UNKNOWN_ROLE]"),
                 default => throw new ReadException("Unknown protocol status: $status")
             };
         }
@@ -297,5 +242,4 @@ class Socket
     {
         $this->disconnect();
     }
-
 }
