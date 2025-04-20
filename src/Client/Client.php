@@ -13,7 +13,7 @@ use Rizwan\LaravelFcgiClient\Requests\Request;
 use Rizwan\LaravelFcgiClient\Responses\Response;
 use Throwable;
 
-final class Client
+class Client
 {
     public function __construct(
         private SocketCollection $sockets = new SocketCollection,
