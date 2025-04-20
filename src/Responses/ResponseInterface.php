@@ -10,7 +10,11 @@ interface ResponseInterface
 
     public function getHeaderLine(string $headerKey): string;
 
+    public function hasHeader(string $headerKey): bool;
+
     public function getBody(): string;
+
+    public function body(): string;
 
     public function getOutput(): string;
 
@@ -31,4 +35,16 @@ interface ResponseInterface
     public function notFound(): bool;
 
     public function serverError(): bool;
+
+    public function json(string $key = null, mixed $default = null): mixed;
+
+    public function toArray(): array;
+
+    public function header(string $key): string;
+
+    public function throw(): static;
+
+    public function throwIf(bool|callable $condition, ?callable $throwCallback = null): static;
+
+    public function throwUnless(bool|callable $condition, ?callable $throwCallback = null): static;
 }

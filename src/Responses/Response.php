@@ -2,6 +2,9 @@
 
 namespace Rizwan\LaravelFcgiClient\Responses;
 
+use http\Exception\RuntimeException;
+use Illuminate\Support\Arr;
+
 class Response implements ResponseInterface
 {
     private const HEADER_PATTERN = '#^([^:]+):(.*)$#';
@@ -79,6 +82,11 @@ class Response implements ResponseInterface
         return $this->body;
     }
 
+    public function body(): string
+    {
+        return $this->getBody();
+    }
+
     public function getOutput(): string
     {
         return $this->output;
@@ -127,5 +135,63 @@ class Response implements ResponseInterface
     public function serverError(): bool
     {
         return $this->status() >= 500;
+    }
+
+    public function json(string $key = null, mixed $default = null): mixed
+    {
+        $decoded = json_decode($this->body, true);
+
+        if ($key === null) {
+            return $decoded;
+        }
+
+        return data_get($decoded, $key, $default);
+    }
+
+    public function toArray(): array
+    {
+        return [
+            'status' => $this->status(),
+            'headers' => $this->getHeaders(),
+            'body' => $this->json() ?? $this->getBody(),
+            'error' => $this->getError(),
+            'duration_ms' => round($this->duration * 1000, 2),
+        ];
+    }
+
+    public function header(string $key): string
+    {
+        return $this->getHeaderLine($key);
+    }
+
+    public function hasHeader(string $headerKey): bool
+    {
+        return isset($this->normalizedHeaders[strtolower($headerKey)]);
+    }
+
+    public function throw(): static
+    {
+        if (! $this->successful()) {
+            throw new \RuntimeException("FastCGI request failed with status {$this->status()}: {$this->getError()}");
+        }
+
+        return $this;
+    }
+
+    public function throwIf(bool|callable $condition, ?callable $throwCallback = null): static
+    {
+        $shouldThrow = is_callable($condition) ? $condition($this) : $condition;
+
+        if ($shouldThrow) {
+            $exception = $throwCallback ? $throwCallback($this) : new RuntimeException("FastCGI response condition failed.");
+            throw $exception;
+        }
+
+        return $this;
+    }
+
+    public function throwUnless(bool|callable $condition, ?callable $throwCallback = null): static
+    {
+        return $this->throwIf(! $condition, $throwCallback);
     }
 }
