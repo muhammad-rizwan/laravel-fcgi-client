@@ -10,7 +10,7 @@ use Rizwan\LaravelFcgiClient\Requests\Request;
 use Rizwan\LaravelFcgiClient\Responses\Response;
 use Throwable;
 
-final readonly class Client
+final class Client
 {
     /**
      * @param SocketCollection $sockets

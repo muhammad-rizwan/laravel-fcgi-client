@@ -2,13 +2,13 @@
 
 namespace Rizwan\LaravelFcgiClient;
 
+use Closure;
+use Illuminate\Support\Facades\Concurrency;
 use Rizwan\LaravelFcgiClient\Client\Client;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Enums\RequestMethod;
 use Rizwan\LaravelFcgiClient\Requests\RequestBuilder;
 use Rizwan\LaravelFcgiClient\Responses\Response;
-use Illuminate\Support\Facades\Concurrency;
-use Closure;
 
 class FCGIManager
 {
@@ -25,7 +25,7 @@ class FCGIManager
     ) {}
 
     /**
-     * Send a request using the specified method
+     * Dispatch a FastCGI request.
      */
     private function sendRequest(
         string $host,
@@ -35,10 +35,8 @@ class FCGIManager
         array $options = [],
         bool $isJson = false
     ): Response {
-        // Use default port if not provided
-        $port = $port ?? 9000;
+        $port ??= 9000;
 
-        // Set up connection
         $this->connection = new NetworkConnection(
             $host,
             $port,
@@ -48,12 +46,9 @@ class FCGIManager
 
         $this->scriptPath = $scriptPath;
         $this->uri = $options['uri'] ?? '';
-
-        // Set custom params if provided
         $this->serverParams = $options['server_params'] ?? [];
         $this->customVars = $options['custom_vars'] ?? [];
 
-        // Build request with appropriate content
         $builder = (new RequestBuilder())
             ->method($method)
             ->path($this->scriptPath);
@@ -68,10 +63,9 @@ class FCGIManager
 
         $request = $builder->build();
 
-        // Apply common parameters
         if (!empty($this->uri)) {
-            $request = $request->withServerParam('REQUEST_URI', $this->uri);
-            $request = $request->withServerParam('SCRIPT_NAME', $this->uri);
+            $request = $request->withServerParam('REQUEST_URI', $this->uri)
+                ->withServerParam('SCRIPT_NAME', $this->uri);
         }
 
         foreach ($this->serverParams as $key => $value) {
@@ -85,69 +79,51 @@ class FCGIManager
         return $this->client->sendRequest($this->connection, $request);
     }
 
-    /**
-     * Make a GET request
-     */
     public function get(string $host, string $scriptPath, array $options = [], ?int $port = null): Response
     {
         return $this->sendRequest($host, $port, $scriptPath, RequestMethod::GET, $options);
     }
 
-    /**
-     * Make a POST request
-     */
     public function post(string $host, string $scriptPath, array $options = [], ?int $port = null): Response
     {
         return $this->sendRequest($host, $port, $scriptPath, RequestMethod::POST, $options);
     }
 
-    /**
-     * Make a PUT request
-     */
     public function put(string $host, string $scriptPath, array $options = [], ?int $port = null): Response
     {
         return $this->sendRequest($host, $port, $scriptPath, RequestMethod::PUT, $options);
     }
 
-    /**
-     * Make a PATCH request
-     */
     public function patch(string $host, string $scriptPath, array $options = [], ?int $port = null): Response
     {
         return $this->sendRequest($host, $port, $scriptPath, RequestMethod::PATCH, $options);
     }
 
-    /**
-     * Make a DELETE request
-     */
     public function delete(string $host, string $scriptPath, array $options = [], ?int $port = null): Response
     {
         return $this->sendRequest($host, $port, $scriptPath, RequestMethod::DELETE, $options);
     }
 
-    /**
-     * Make a JSON request (POST with JSON content)
-     */
     public function json(string $host, string $scriptPath, array $options = [], ?int $port = null): Response
     {
         return $this->sendRequest($host, $port, $scriptPath, RequestMethod::POST, $options, true);
     }
 
     /**
-     * Execute multiple requests in parallel using Laravel's Concurrency facade
+     * Execute multiple FastCGI requests concurrently.
+     *
+     * @param Closure $callback A callback that returns an array of requests.
+     * @return array
      */
     public function pool(Closure $callback): array
     {
-        // Execute the callback directly with $this as context
         $requests = $callback($this);
 
-        // Wrap each request in a closure for the Concurrency facade
         $closures = [];
         foreach ($requests as $key => $request) {
             $closures[$key] = fn() => $request;
         }
 
-        // Use Laravel's Concurrency facade
         return Concurrency::concurrent($closures);
     }
 }

@@ -2,40 +2,53 @@
 
 namespace Rizwan\LaravelFcgiClient\Connections;
 
-class NetworkConnection
+use Rizwan\LaravelFcgiClient\Exceptions\ConnectionException;
+
+final class NetworkConnection
 {
+    /**
+     * @param string $host
+     * @param int $port Port for FastCGI (default: 9000)
+     * @param int $connectTimeout Timeout in milliseconds
+     * @param int $readWriteTimeout Timeout in milliseconds
+     */
     public function __construct(
-        private readonly string $host,
-        private readonly int $port = 9000,
-        private readonly int $connectTimeout = 5000,
-        private readonly int $readWriteTimeout = 5000,
+        private string $host,
+        private int $port = 9000,
+        private int $connectTimeout = 5000,
+        private int $readWriteTimeout = 5000,
     ) {}
 
+    /**
+     * @return string
+     */
     public function getSocketAddress(): string
     {
         return sprintf('tcp://%s:%d', $this->host, $this->port);
     }
 
-    public function getHost(): string
-    {
-        return $this->host;
-    }
-
-    public function getPort(): int
-    {
-        return $this->port;
-    }
-
+    /**
+     * @return int
+     */
     public function getConnectTimeout(): int
     {
         return $this->connectTimeout;
     }
 
+    /**
+     * @return int
+     */
     public function getReadWriteTimeout(): int
     {
         return $this->readWriteTimeout;
     }
 
+    /**
+     * Establishes a stream socket connection.
+     *
+     * @return resource
+     * @throws ConnectionException
+     */
     public function connect(): mixed
     {
         $resource = @stream_socket_client(
@@ -46,22 +59,21 @@ class NetworkConnection
         );
 
         if ($resource === false) {
-            throw new \Rizwan\LaravelFcgiClient\Exceptions\ConnectionException(
-                "Failed to connect: $errorString",
-                $errorNumber
-            );
+            throw new ConnectionException("Failed to connect: $errorString", $errorNumber);
         }
 
-        // Set timeout
         stream_set_timeout(
             $resource,
-            (int)($this->readWriteTimeout / 1000),
+            intdiv($this->readWriteTimeout, 1000),
             ($this->readWriteTimeout % 1000) * 1000
         );
 
         return $resource;
     }
 
+    /**
+     * Gracefully shuts down and closes the socket.
+     */
     public function disconnect(mixed $resource): void
     {
         if (is_resource($resource)) {

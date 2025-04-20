@@ -2,9 +2,12 @@
 
 namespace Rizwan\LaravelFcgiClient\Responses;
 
+/**
+ * Represents a parsed FastCGI response.
+ */
 class Response implements ResponseInterface
 {
-    private const HEADER_PATTERN = '#^([^\:]+):(.*)$#';
+    private const HEADER_PATTERN = '#^([^:]+):(.*)$#';
 
     private array $normalizedHeaders = [];
     private array $headers = [];
@@ -18,13 +21,15 @@ class Response implements ResponseInterface
         $this->parseHeadersAndBody();
     }
 
+    /**
+     * Parse the headers and body from FastCGI STDOUT output.
+     */
     private function parseHeadersAndBody(): void
     {
         $lines = explode(PHP_EOL, $this->output);
         $offset = 0;
 
         foreach ($lines as $i => $line) {
-            $matches = [];
             if (!preg_match(self::HEADER_PATTERN, $line, $matches)) {
                 break;
             }
@@ -42,24 +47,18 @@ class Response implements ResponseInterface
 
     private function addRawHeader(string $headerKey, string $headerValue): void
     {
-        if (!isset($this->headers[$headerKey])) {
-            $this->headers[$headerKey] = [$headerValue];
-            return;
-        }
-
         $this->headers[$headerKey][] = $headerValue;
     }
 
     private function addNormalizedHeader(string $headerKey, string $headerValue): void
     {
         $key = strtolower($headerKey);
-
-        if (!isset($this->normalizedHeaders[$key])) {
-            $this->normalizedHeaders[$key] = [$headerValue];
-            return;
-        }
-
         $this->normalizedHeaders[$key][] = $headerValue;
+    }
+
+    public function getHeaders(): array
+    {
+        return $this->headers;
     }
 
     public function getHeader(string $headerKey): array
@@ -70,11 +69,6 @@ class Response implements ResponseInterface
     public function getHeaderLine(string $headerKey): string
     {
         return implode(', ', $this->getHeader($headerKey));
-    }
-
-    public function getHeaders(): array
-    {
-        return $this->headers;
     }
 
     public function getBody(): string
@@ -97,20 +91,32 @@ class Response implements ResponseInterface
         return $this->duration;
     }
 
-    public function successful(): bool
-    {
-        return empty($this->error) && !$this->isErrorStatus();
-    }
-
-    private function isErrorStatus(): bool
+    public function getStatusCode(): ?int
     {
         $status = $this->getHeaderLine('Status');
 
-        if (empty($status)) {
-            return false;
+        if (preg_match('/^\s*(\d{3})/', $status, $matches)) {
+            return (int) $matches[1];
         }
 
-        $statusCode = (int) substr($status, 0, 3);
-        return $statusCode >= 400;
+        return null;
+    }
+
+    public function successful(): bool
+    {
+        $code = $this->getStatusCode();
+        return empty($this->error) && ($code === null || $code < 400);
+    }
+
+    public function isClientError(): bool
+    {
+        $code = $this->getStatusCode();
+        return $code >= 400 && $code < 500;
+    }
+
+    public function isServerError(): bool
+    {
+        $code = $this->getStatusCode();
+        return $code >= 500;
     }
 }
