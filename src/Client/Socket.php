@@ -20,16 +20,12 @@ class Socket
 {
     private const HEADER_LEN = 8;
     private const REQ_MAX_CONTENT_SIZE = 65535;
-    private const STREAM_SELECT_USEC = 200000;
-
     private const SOCK_STATE_INIT = 1;
     private const SOCK_STATE_BUSY = 2;
     private const SOCK_STATE_IDLE = 3;
 
     private mixed $resource = null;
     private int $status;
-    private array $responseCallbacks = [];
-    private array $failureCallbacks = [];
     private float $startTime = 0;
     private ?Response $response = null;
 
@@ -50,11 +46,6 @@ class Socket
     public function isIdle(): bool
     {
         return $this->status === self::SOCK_STATE_INIT || $this->status === self::SOCK_STATE_IDLE;
-    }
-
-    public function isBusy(): bool
-    {
-        return $this->status === self::SOCK_STATE_BUSY;
     }
 
     public function sendRequest(Request $request): void
@@ -160,6 +151,11 @@ class Socket
         }
     }
 
+    /**
+     * @throws ReadException
+     * @throws WriteException
+     * @throws TimeoutException
+     */
     public function fetchResponse(?int $timeoutMs = null): Response
     {
         if ($this->response !== null) {
@@ -212,13 +208,13 @@ class Socket
         return $this->response;
     }
 
-    private function setStreamTimeout(int $timeoutMs): bool
+    private function setStreamTimeout(int $timeoutMs): void
     {
         if (!is_resource($this->resource)) {
-            return false;
+            return;
         }
 
-        return stream_set_timeout(
+        stream_set_timeout(
             $this->resource,
             (int)floor($timeoutMs / 1000),
             ($timeoutMs % 1000) * 1000
@@ -302,17 +298,4 @@ class Socket
         $this->disconnect();
     }
 
-    public function notifyCallbacks(Response $response): void
-    {
-        foreach ($this->responseCallbacks as $callback) {
-            $callback($response);
-        }
-    }
-
-    public function notifyFailureCallbacks(Throwable $throwable): void
-    {
-        foreach ($this->failureCallbacks as $callback) {
-            $callback($throwable);
-        }
-    }
 }

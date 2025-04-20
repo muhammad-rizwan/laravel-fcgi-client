@@ -5,7 +5,6 @@ namespace Rizwan\LaravelFcgiClient\Client;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
 use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
-use Rizwan\LaravelFcgiClient\Exceptions\ReadException;
 use Rizwan\LaravelFcgiClient\Exceptions\WriteException;
 
 class SocketCollection
@@ -13,6 +12,9 @@ class SocketCollection
     /** @var Socket[] */
     private array $sockets = [];
 
+    /**
+     * @throws WriteException
+     */
     public function new(
         NetworkConnection $connection,
         PacketEncoder $packetEncoder,
@@ -38,15 +40,6 @@ class SocketCollection
         throw new WriteException('Could not allocate a new socket ID');
     }
 
-    public function getById(int $socketId): Socket
-    {
-        if (!$this->exists($socketId)) {
-            throw new ReadException("Socket not found for socket ID: $socketId");
-        }
-
-        return $this->sockets[$socketId];
-    }
-
     public function exists(int $socketId): bool
     {
         return isset($this->sockets[$socketId]);
@@ -57,19 +50,4 @@ class SocketCollection
         unset($this->sockets[$socketId]);
     }
 
-    public function isEmpty(): bool
-    {
-        return empty($this->sockets);
-    }
-
-    public function hasBusySockets(): bool
-    {
-        foreach ($this->sockets as $socket) {
-            if ($socket->isBusy()) {
-                return true;
-            }
-        }
-
-        return false;
-    }
 }

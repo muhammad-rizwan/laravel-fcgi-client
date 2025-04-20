@@ -5,7 +5,9 @@ namespace Rizwan\LaravelFcgiClient\Client;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
 use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
+use Rizwan\LaravelFcgiClient\Exceptions\ConnectionException;
 use Rizwan\LaravelFcgiClient\Exceptions\ReadException;
+use Rizwan\LaravelFcgiClient\Exceptions\WriteException;
 use Rizwan\LaravelFcgiClient\Requests\Request;
 use Rizwan\LaravelFcgiClient\Responses\Response;
 use Throwable;
@@ -23,14 +25,17 @@ class Client
         $this->nameValuePairEncoder = new NameValuePairEncoder();
     }
 
+    /**
+     * @param NetworkConnection $connection
+     * @param Request $request
+     * @return Response
+     * @throws Throwable
+     * @throws ConnectionException
+     * @throws WriteException
+     */
     public function sendRequest(NetworkConnection $connection, Request $request): Response
     {
-        $socketId = $this->sendAsyncRequest($connection, $request);
-        return $this->readResponse($socketId);
-    }
-
-    public function sendAsyncRequest(NetworkConnection $connection, Request $request): int
-    {
+        // Create a socket, send request and directly read the response
         $socket = $this->sockets->new(
             $connection,
             $this->packetEncoder,
@@ -39,42 +44,12 @@ class Client
 
         try {
             $socket->sendRequest($request);
-            return $socket->getId();
+            return $socket->fetchResponse();
         } catch (Throwable $e) {
             $this->sockets->remove($socket->getId());
             throw $e;
-        }
-    }
-
-    public function readResponse(int $socketId, ?int $timeoutMs = null): Response
-    {
-        try {
-            return $this->sockets->getById($socketId)->fetchResponse($timeoutMs);
-        } catch (Throwable $e) {
-            $this->sockets->remove($socketId);
-            throw $e;
         } finally {
-            $this->sockets->remove($socketId);
+            $this->sockets->remove($socket->getId());
         }
-    }
-
-    public function waitForResponse(int $socketId, ?int $timeoutMs = null): void
-    {
-        $socket = $this->sockets->getById($socketId);
-
-        try {
-            $response = $socket->fetchResponse($timeoutMs);
-            $socket->notifyCallbacks($response);
-        } catch (Throwable $e) {
-            $socket->notifyFailureCallbacks($e);
-            throw $e;
-        } finally {
-            $this->sockets->remove($socketId);
-        }
-    }
-
-    public function hasUnhandledResponses(): bool
-    {
-        return $this->sockets->hasBusySockets();
     }
 }

@@ -2,6 +2,6 @@
 
 namespace Rizwan\LaravelFcgiClient\Exceptions;
 
-class ConnectionException extends LaravelFcgiClientException
+class ConnectionException extends FastCGIException
 {
 }
