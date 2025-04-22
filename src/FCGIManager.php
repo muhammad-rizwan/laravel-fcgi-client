@@ -223,15 +223,4 @@ class FCGIManager
         return $this->sendRequest($host, $port, $scriptPath, RequestMethod::POST, asForm: true);
     }
 
-    public function pool(Closure $callback): array
-    {
-        $requests = $callback($this);
-
-        $closures = [];
-        foreach ($requests as $key => $request) {
-            $closures[$key] = fn () => $request;
-        }
-
-        return Concurrency::run($closures);
-    }
 }

@@ -16,7 +16,7 @@ use Rizwan\LaravelFcgiClient\FCGIManager;
  * @method static \Rizwan\LaravelFcgiClient\Responses\Response patch(string $host, string $scriptPath, array $options = [], ?int $port = null)
  * @method static \Rizwan\LaravelFcgiClient\Responses\Response delete(string $host, string $scriptPath, array $options = [], ?int $port = null)
  * @method static \Rizwan\LaravelFcgiClient\Responses\Response json(string $host, string $scriptPath, array $options = [], ?int $port = null)
- * @method static array pool(\Closure $callback)
+
  */
 final class FCGI extends Facade
 {
