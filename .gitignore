@@ -28,6 +28,7 @@ Thumbs.db
 
 # PHPUnit
 .phpunit.result.cache
+.phpunit.cache/
 
 # Logs
 *.log
