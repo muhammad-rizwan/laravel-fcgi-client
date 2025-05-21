@@ -1,0 +1,41 @@
+# Enforce LF for all PHP, JS, CSS, etc.
+*.php       text eol=lf
+*.js        text eol=lf
+*.ts        text eol=lf
+*.vue       text eol=lf
+*.css       text eol=lf
+*.scss      text eol=lf
+*.html      text eol=lf
+*.xml       text eol=lf
+*.json      text eol=lf
+*.yml       text eol=lf
+*.yaml      text eol=lf
+*.md        text eol=lf
+*.blade.php text eol=lf
+*.env       text eol=lf
+
+# Force all text files to use UTF-8 and normalize newlines
+*           text=auto eol=lf
+
+# Binary files
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.gif       binary
+*.ico       binary
+*.pdf       binary
+*.zip       binary
+*.gz        binary
+*.mp4       binary
+*.woff      binary
+*.woff2     binary
+*.ttf       binary
+*.eot       binary
+
+# Node dependencies and vendor should be excluded from normalization
+node_modules/** -text
+vendor/**       -text
+
+# OS-generated junk
+.DS_Store       text eol=lf
+Thumbs.db       text eol=lf
