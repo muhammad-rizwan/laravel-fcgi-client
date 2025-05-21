@@ -2,10 +2,9 @@
 
 A modern, Laravel-style FastCGI client that lets your Laravel application communicate directly with FastCGI-compatible servers like PHP-FPM.
 
-![Laravel FastCGI Client](https://img.shields.io/packagist/v/rizwan/laravel-fcgi-client.svg?style=flat-square)
-![PHP Version](https://img.shields.io/packagist/php-v/rizwan/laravel-fcgi-client.svg?style=flat-square)
-![Laravel Version](https://img.shields.io/badge/Laravel-9.x|10.x|11.x|12.x-red.svg?style=flat-square)
-![License](https://img.shields.io/packagist/l/rizwan/laravel-fcgi-client.svg?style=flat-square)
+## Acknowledgements
+
+This package is built as a fork of the [fast-cgi-client](https://github.com/hollodotme/fast-cgi-client) library originally authored by **hollodotme**. We’ve adapted and extended it to provide seamless integration with Laravel—many thanks to the original author for creating such a solid foundation.
 
 ## What is FastCGI?
 
