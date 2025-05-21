@@ -27,7 +27,7 @@ This package enables Laravel applications to directly communicate with FastCGI s
 ## 🚀 Installation
 
 ```bash
-  composer require rizwan/laravel-fcgi-client
+  composer require mrizwan/laravel-fcgi-client
 ```
 
 ## 🔧 Configuration

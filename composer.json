@@ -1,5 +1,5 @@
 {
-  "name": "rizwan/laravel-fcgi-client",
+  "name": "mrizwan/laravel-fcgi-client",
   "description": "A Laravel package for communicating with FastCGI-compatible servers (like PHP-FPM)",
   "type": "library",
   "license": "MIT",
