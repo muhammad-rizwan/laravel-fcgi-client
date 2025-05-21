@@ -2,18 +2,13 @@
 
 namespace Rizwan\LaravelFcgiClient\Responses;
 
-use http\Exception\RuntimeException;
-
 class Response implements ResponseInterface
 {
     private const HEADER_PATTERN = '#^([^:]+):(.*)$#';
 
     private array $normalizedHeaders = [];
-
     private array $headers = [];
-
     private string $body = '';
-
     private ?int $statusCode = null;
 
     public function __construct(
@@ -26,24 +21,24 @@ class Response implements ResponseInterface
 
     private function parseHeadersAndBody(): void
     {
-        $lines = explode(PHP_EOL, $this->output);
+        $lines  = explode(PHP_EOL, $this->output);
         $offset = 0;
 
         foreach ($lines as $i => $line) {
-            $matches = [];
             if (! preg_match(self::HEADER_PATTERN, $line, $matches)) {
                 break;
             }
 
-            $offset = $i;
-            $headerKey = trim($matches[1]);
-            $headerValue = trim($matches[2]);
+            $offset       = $i;
+            $headerKey    = trim($matches[1]);
+            $headerValue  = trim($matches[2]);
 
             $this->addRawHeader($headerKey, $headerValue);
             $this->addNormalizedHeader($headerKey, $headerValue);
         }
 
-        $this->body = implode(PHP_EOL, array_slice($lines, $offset + 2));
+        // Skip the blank line after headers
+        $this->body       = implode(PHP_EOL, array_slice($lines, $offset + 2));
         $this->statusCode = $this->extractStatusCode();
     }
 
@@ -61,7 +56,6 @@ class Response implements ResponseInterface
     private function extractStatusCode(): ?int
     {
         $line = $this->getHeaderLine('Status');
-
         return $line ? (int) substr($line, 0, 3) : null;
     }
 
@@ -154,10 +148,10 @@ class Response implements ResponseInterface
     public function toArray(): array
     {
         return [
-            'status' => $this->status(),
-            'headers' => $this->getHeaders(),
-            'body' => $this->json() ?? $this->getBody(),
-            'error' => $this->getError(),
+            'status'      => $this->status(),
+            'headers'     => $this->getHeaders(),
+            'body'        => $this->json() ?? $this->getBody(),
+            'error'       => $this->getError(),
             'duration_ms' => round($this->duration * 1000, 2),
         ];
     }
@@ -175,7 +169,9 @@ class Response implements ResponseInterface
     public function throw(): static
     {
         if (! $this->successful()) {
-            throw new \RuntimeException("FastCGI request failed with status {$this->status()}: {$this->getError()}");
+            throw new \RuntimeException(
+                "FastCGI request failed with status {$this->status()}: {$this->getError()}"
+            );
         }
 
         return $this;
@@ -186,8 +182,9 @@ class Response implements ResponseInterface
         $shouldThrow = is_callable($condition) ? $condition($this) : $condition;
 
         if ($shouldThrow) {
-            $exception = $throwCallback ? $throwCallback($this) : new RuntimeException('FastCGI response condition failed.');
-            throw $exception;
+            throw ($throwCallback
+                ? $throwCallback($this)
+                : new \RuntimeException('FastCGI response condition failed.'));
         }
 
         return $this;

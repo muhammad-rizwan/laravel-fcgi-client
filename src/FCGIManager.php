@@ -3,7 +3,6 @@
 namespace Rizwan\LaravelFcgiClient;
 
 use Closure;
-use Illuminate\Support\Facades\Concurrency;
 use Rizwan\LaravelFcgiClient\Client\Client;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Enums\RequestMethod;
@@ -14,33 +13,19 @@ use Throwable;
 class FCGIManager
 {
     private ?NetworkConnection $connection = null;
-
     private string $scriptPath = '';
-
     private string $uri = '';
-
     private array $headers = [];
-
     private array $serverParams = [];
-
     private array $customVars = [];
-
     private array $query = [];
-
     private array $payload = [];
-
     private ?string $rawBody = null;
-
     private string $rawBodyType = 'text/plain';
-
     private int $connectTimeout = 5000;
-
     private int $readTimeout = 5000;
-
     private int $maxRetries = 0;
-
     private int $retryDelayMs = 0;
-
     private ?Closure $retryWhen = null;
 
     /**
