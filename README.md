@@ -186,7 +186,7 @@ $isSuccessful = $response->successful();    // true if < 400 and no error
 $body = $response->body();                  // Raw body string
 $data = $response->json();                  // Decoded JSON array
 $value = $response->json('user.name');      // Access JSON via dot notation
-$array = $response->toArray();              // Response as array
+$array = $response->toArray();              // Response as array including timing metrics
 
 // Headers
 $contentType = $response->header('Content-Type');  // Get a single header
@@ -194,7 +194,11 @@ $allHeaders = $response->getHeaders();            // Get all headers
 $hasHeader = $response->hasHeader('X-Custom');    // Check if header exists
 
 // Performance
-$duration = $response->getDuration();       // Request duration in seconds
+$duration = $response->getDuration();       // Response read duration in seconds
+$connectTime = $response->getConnectDuration(); // TCP connect duration in milliseconds
+$writeTime = $response->getWriteDuration();     // Request write duration in milliseconds
+$array['connect_duration_ms'];                  // Milliseconds spent connecting
+$array['write_duration_ms'];                    // Milliseconds spent writing
 
 // Exception handling
 $response->throw();                         // Throws if status >= 400

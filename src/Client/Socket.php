@@ -2,7 +2,6 @@
 
 namespace Rizwan\LaravelFcgiClient\Client;
 
-use Illuminate\Support\Facades\Log;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
 use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
@@ -28,6 +27,12 @@ final class Socket
     private SocketStatus $status = SocketStatus::INIT;
 
     private float $startTime = 0;
+
+    /** @var float Connection duration in milliseconds */
+    private float $connectDuration = 0.0;
+
+    /** @var float Write duration in milliseconds */
+    private float $writeDuration = 0.0;
 
     private ?Response $response = null;
 
@@ -56,18 +61,17 @@ final class Socket
 
         $this->response = null;
 
-        Log::debug('[FCGI] Connecting to FastCGI socket...');
         $connectStart = microtime(true);
         $this->connect();
         $connectEnd = microtime(true);
-        Log::debug('[FCGI] Connected in '.round(($connectEnd - $connectStart) * 1000, 2).'ms');
+        $this->connectDuration = ($connectEnd - $connectStart) * 1000;
 
         $packets = $this->buildRequestPackets($request);
 
         $writeStart = microtime(true);
         $this->write($packets);
         $writeEnd = microtime(true);
-        Log::debug('[FCGI] Request written in '.round(($writeEnd - $writeStart) * 1000, 2).'ms');
+        $this->writeDuration = ($writeEnd - $writeStart) * 1000;
 
         $this->status = SocketStatus::BUSY;
         $this->startTime = microtime(true);
@@ -129,7 +133,7 @@ final class Socket
 
     /**
      * @throws ReadException
-     * @throws TimeoutException
+     * @throws TimeoutException|WriteException
      */
     public function fetchResponse(?int $timeoutMs = null): Response
     {
@@ -160,7 +164,10 @@ final class Socket
         $this->response = new Response(
             $output,
             $error,
-            microtime(true) - $this->startTime
+            microtime(true) - $this->startTime,
+            $this->connectDuration,
+            $this->writeDuration
+
         );
 
         $this->status = SocketStatus::IDLE;
