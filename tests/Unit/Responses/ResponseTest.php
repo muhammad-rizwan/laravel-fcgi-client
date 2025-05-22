@@ -67,6 +67,13 @@ test('status defaults to 200 when Status header is missing', function () {
         ->and($response->ok())->toBeTrue();
 });
 
+test('extracts status message from header', function () {
+    $output = "Status: 201 Created\r\n\r\n";
+    $response = new Response($output, '', 0.5);
+
+    expect($response->statusMessage())->toBe('Created');
+});
+
 test('toArray includes durations', function () {
     $response = new Response(
         "Content-Type: text/plain\r\n\r\nBody",
@@ -78,6 +85,9 @@ test('toArray includes durations', function () {
 
     $array = $response->toArray();
 
+
     expect($array['connect_duration_ms'])->toBe(round(100.0, 2))
-        ->and($array['write_duration_ms'])->toBe(round(200.0, 2));
+        ->and($array['status_message'])->toBeNull()
+        ->and($array['write_duration_ms'])->toBe(round(200.0, 2))
+        ->and($array['attempts'])->toBe(0);
 });

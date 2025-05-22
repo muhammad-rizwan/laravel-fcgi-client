@@ -10,6 +10,8 @@ class Response implements ResponseInterface
     private array $headers = [];
     private string $body = '';
     private ?int $statusCode = null;
+    private ?string $statusMessage = null;
+
 
     public function __construct(
         private readonly string $output,
@@ -44,6 +46,7 @@ class Response implements ResponseInterface
         // Skip the blank line after headers
         $this->body       = implode(PHP_EOL, array_slice($lines, $offset + 2));
         $this->statusCode = $this->extractStatusCode();
+        $this->statusMessage = $this->extractStatusMessage();
     }
 
     private function addRawHeader(string $headerKey, string $value): void
@@ -61,6 +64,20 @@ class Response implements ResponseInterface
     {
         $line = $this->getHeaderLine('Status');
         return $line ? (int) substr($line, 0, 3) : 200;
+    }
+
+    private function extractStatusMessage(): string
+    {
+        $line = $this->getHeaderLine('Status');
+
+        // FCGI returns empty line for 200 OK response
+        if ($line === '') {
+            return 'OK';
+        }
+
+        $parts = explode(' ', trim($line), 2);
+
+        return $parts[1] ?? 'OK';
     }
 
     public function getHeader(string $headerKey): array
@@ -124,6 +141,11 @@ class Response implements ResponseInterface
         return $this->statusCode;
     }
 
+    public function statusMessage(): ?string
+    {
+        return $this->statusMessage;
+    }
+
     public function ok(): bool
     {
         return $this->status() === 200;
@@ -164,6 +186,7 @@ class Response implements ResponseInterface
     {
         return [
             'status'      => $this->status(),
+            'status_message' => $this->statusMessage(),
             'headers'     => $this->getHeaders(),
             'body'        => $this->json() ?? $this->getBody(),
             'error'       => $this->getError(),

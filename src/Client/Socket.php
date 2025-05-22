@@ -2,7 +2,6 @@
 
 namespace Rizwan\LaravelFcgiClient\Client;
 
-use Illuminate\Support\Facades\Log;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Encoders\NameValuePairEncoder;
 use Rizwan\LaravelFcgiClient\Encoders\PacketEncoder;
@@ -164,7 +163,8 @@ final class Socket
 
         $this->response = new Response(
             $output,
-            $error,microtime(true) - $this->startTime,
+            $error,
+            microtime(true) - $this->startTime,
             $this->connectDuration,
             $this->writeDuration
 
