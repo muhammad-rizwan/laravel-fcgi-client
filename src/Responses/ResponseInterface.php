@@ -22,6 +22,10 @@ interface ResponseInterface
 
     public function getDuration(): float;
 
+    public function getConnectDuration(): float;
+
+    public function getWriteDuration(): float;
+
     public function successful(): bool;
 
     public function status(): ?int;

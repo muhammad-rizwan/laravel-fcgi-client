@@ -4,7 +4,7 @@ namespace Rizwan\LaravelFcgiClient\Responses;
 
 class Response implements ResponseInterface
 {
-    private const HEADER_PATTERN = '#^([^:]+):(.*)$#';
+    private const string HEADER_PATTERN = '#^([^:]+):(.*)$#';
 
     private array $normalizedHeaders = [];
     private array $headers = [];
@@ -14,7 +14,11 @@ class Response implements ResponseInterface
     public function __construct(
         private readonly string $output,
         private readonly string $error,
-        private readonly float $duration
+        private readonly float $duration,
+        /** @var float connection time in ms */
+        private readonly float $connectDuration = 0.0,
+        /** @var float write time in ms */
+        private readonly float $writeDuration = 0.0
     ) {
         $this->parseHeadersAndBody();
     }
@@ -56,7 +60,7 @@ class Response implements ResponseInterface
     private function extractStatusCode(): ?int
     {
         $line = $this->getHeaderLine('Status');
-        return $line ? (int) substr($line, 0, 3) : null;
+        return $line ? (int) substr($line, 0, 3) : 200;
     }
 
     public function getHeader(string $headerKey): array
@@ -98,6 +102,17 @@ class Response implements ResponseInterface
     {
         return $this->duration;
     }
+
+    public function getConnectDuration(): float
+    {
+        return $this->connectDuration;
+    }
+
+    public function getWriteDuration(): float
+    {
+        return $this->writeDuration;
+    }
+
 
     public function successful(): bool
     {
@@ -152,7 +167,9 @@ class Response implements ResponseInterface
             'headers'     => $this->getHeaders(),
             'body'        => $this->json() ?? $this->getBody(),
             'error'       => $this->getError(),
-            'duration_ms' => round($this->duration * 1000, 2),
+            'duration_ms'        => round($this->duration * 1000, 2),
+            'connect_duration_ms' => round($this->connectDuration, 2),
+            'write_duration_ms'   => round($this->writeDuration, 2),
         ];
     }
 
