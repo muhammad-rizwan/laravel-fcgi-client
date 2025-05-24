@@ -28,8 +28,8 @@ interface ResponseInterface
 
     public function successful(): bool;
 
-    public function status(): ?int;
-    public function statusMessage(): ?string;
+    public function getStatusCode(): ?int;
+    public function getStatusMessage(): ?string;
 
 
     public function ok(): bool;

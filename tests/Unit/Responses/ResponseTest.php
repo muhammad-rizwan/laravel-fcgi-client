@@ -71,7 +71,7 @@ test('extracts status message from header', function () {
     $output = "Status: 201 Created\r\n\r\n";
     $response = new Response($output, '', 0.5);
 
-    expect($response->statusMessage())->toBe('Created');
+    expect($response->getStatusMessage())->toBe('Created');
 });
 
 test('toArray includes durations', function () {
@@ -83,11 +83,12 @@ test('toArray includes durations', function () {
         200.0
     );
 
+    $response->setAttempts(3);
     $array = $response->toArray();
 
 
     expect($array['connect_duration_ms'])->toBe(round(100.0, 2))
         ->and($array['status_message'])->toBeNull()
         ->and($array['write_duration_ms'])->toBe(round(200.0, 2))
-        ->and($array['attempts'])->toBe(0);
+        ->and($array['attempts'])->toBe(3);
 });

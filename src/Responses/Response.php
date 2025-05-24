@@ -4,14 +4,14 @@ namespace Rizwan\LaravelFcgiClient\Responses;
 
 class Response implements ResponseInterface
 {
-    private const string HEADER_PATTERN = '#^([^:]+):(.*)$#';
+    private const HEADER_PATTERN = '#^([^:]+):(.*)$#';
 
     private array $normalizedHeaders = [];
     private array $headers = [];
     private string $body = '';
     private ?int $statusCode = null;
     private ?string $statusMessage = null;
-
+    private int $attempts = 0;
 
     public function __construct(
         private readonly string $output,
@@ -20,7 +20,8 @@ class Response implements ResponseInterface
         /** @var float connection time in ms */
         private readonly float $connectDuration = 0.0,
         /** @var float write time in ms */
-        private readonly float $writeDuration = 0.0
+        private readonly float $writeDuration = 0.0,
+        int $attempts = 0
     ) {
         $this->parseHeadersAndBody();
     }
@@ -130,45 +131,55 @@ class Response implements ResponseInterface
         return $this->writeDuration;
     }
 
-
-    public function successful(): bool
+    public function setAttempts(int $attempts): static
     {
-        return empty($this->error) && $this->status() < 400;
+        $this->attempts = $attempts;
+
+        return $this;
     }
 
-    public function status(): ?int
+    public function getAttempts(): int
+    {
+        return $this->attempts;
+    }
+    public function successful(): bool
+    {
+        return empty($this->error) && $this->getStatusCode() < 400;
+    }
+
+    public function getStatusCode(): ?int
     {
         return $this->statusCode;
     }
 
-    public function statusMessage(): ?string
+    public function getStatusMessage(): ?string
     {
         return $this->statusMessage;
     }
 
     public function ok(): bool
     {
-        return $this->status() === 200;
+        return $this->getStatusCode() === 200;
     }
 
     public function unauthorized(): bool
     {
-        return $this->status() === 401;
+        return $this->getStatusCode() === 401;
     }
 
     public function forbidden(): bool
     {
-        return $this->status() === 403;
+        return $this->getStatusCode() === 403;
     }
 
     public function notFound(): bool
     {
-        return $this->status() === 404;
+        return $this->getStatusCode() === 404;
     }
 
     public function serverError(): bool
     {
-        return $this->status() >= 500;
+        return $this->getStatusCode() >= 500;
     }
 
     public function json(?string $key = null, mixed $default = null): mixed
@@ -185,14 +196,15 @@ class Response implements ResponseInterface
     public function toArray(): array
     {
         return [
-            'status'      => $this->status(),
-            'status_message' => $this->statusMessage(),
+            'status'      => $this->getStatusCode(),
+            'status_message' => $this->getStatusMessage(),
             'headers'     => $this->getHeaders(),
             'body'        => $this->json() ?? $this->getBody(),
             'error'       => $this->getError(),
-            'duration_ms'        => round($this->duration * 1000, 2),
-            'connect_duration_ms' => round($this->connectDuration, 2),
-            'write_duration_ms'   => round($this->writeDuration, 2),
+            'duration'        => round($this->duration * 1000, 2),
+            'connect_duration' => round($this->connectDuration, 2),
+            'write_duration'   => round($this->writeDuration, 2),
+            'attempts'       => $this->attempts,
         ];
     }
 
@@ -210,7 +222,7 @@ class Response implements ResponseInterface
     {
         if (! $this->successful()) {
             throw new \RuntimeException(
-                "FastCGI request failed with status {$this->status()}: {$this->getError()}"
+                "FastCGI request failed with status {$this->getStatusCode()}: {$this->getError()}"
             );
         }
 
@@ -234,4 +246,5 @@ class Response implements ResponseInterface
     {
         return $this->throwIf(! $condition, $throwCallback);
     }
+
 }
