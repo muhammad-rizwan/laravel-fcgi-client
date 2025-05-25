@@ -68,5 +68,6 @@ test('can retry on failure', function () {
     $response = $manager->retry(2)->get('tcp://127.0.0.1:9000', '/index.php');
 
     expect($response)->toBeInstanceOf(Response::class);
-    expect($callCount)->toBe(2);
+    expect($callCount)->toBe(2)
+        ->and($response->getAttempts())->toBe(2);
 });

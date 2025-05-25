@@ -221,6 +221,43 @@ class FCGIManager
     }
 
     /**
+     * Determine if the request should be retried based on response or exception.
+     *
+     * @param Response|null $response The response object (null if exception occurred)
+     * @param Throwable|null $exception The exception that occurred (null if response received)
+     * @param mixed $request The request object
+     * @return bool
+     */
+    private function shouldRetry(?Response $response, ?Throwable $exception, $request): bool
+    {
+        // If custom retry logic is provided, use it
+        if ($this->retryWhen !== null) {
+            return ($this->retryWhen)($exception ?? $response, $request);
+        }
+
+        // Default Laravel-like behavior
+        // Always retry on exceptions (network failures, timeouts, etc.)
+        if ($exception !== null) {
+            return true;
+        }
+
+        // Laravel's HTTP client retries on both client (4xx) and server (5xx) errors
+        if ($response !== null) {
+            $statusCode = $response->getStatusCode();
+
+            // Don't retry on success (2xx, 3xx)
+            if ($statusCode >= 200 && $statusCode < 400) {
+                return false;
+            }
+
+            // Retry on client errors (4xx) and server errors (5xx)
+            return $statusCode >= 400;
+        }
+
+        return false;
+    }
+
+    /**
      * Send a request to the FastCGI server.
      *
      * @param string $host The hostname or IP address of the FastCGI server
@@ -252,7 +289,7 @@ class FCGIManager
 
         $this->scriptPath = $scriptPath;
 
-        $builder = (new RequestBuilder)
+        $builder = (new RequestBuilder())
             ->method($method)
             ->path($this->scriptPath)
             ->withHeaders($this->headers);
@@ -266,6 +303,7 @@ class FCGIManager
         } elseif (!empty($this->rawBody)) {
             $builder->withBody($this->rawBody, $this->rawBodyType);
         }
+
 
         $request = $builder->build();
 
@@ -282,21 +320,66 @@ class FCGIManager
         }
 
         $attempts = 0;
+        $response = null;
 
         do {
+            $attempts++;
+
             try {
-                return $this->client->sendRequest($this->connection, $request);
+                $response = $this->client->sendRequest($this->connection, $request);
+
+                // Set the attempts count on the response
+                if (method_exists($response, 'setAttempts')) {
+                    $response->setAttempts($attempts);
+                }
+
+                // Check if we should retry based on the response
+                if ($attempts < $this->maxRetries && $this->shouldRetry($response, null, $request)) {
+                    if ($this->retryDelayMs > 0) {
+                        usleep($this->retryDelayMs * 1000);
+                    }
+                    continue;
+                }
+
+                // Return the response (success or failure that shouldn't be retried)
+                return $response;
+
             } catch (Throwable $e) {
-                $shouldRetry = $this->retryWhen ? ($this->retryWhen)($e, $request) : true;
 
-                if (++$attempts > $this->maxRetries || !$shouldRetry) {
-                    throw $e;
+                // Check if we should retry based on the exception
+                if ($attempts < $this->maxRetries && $this->shouldRetry(null, $e, $request)) {
+                    if ($this->retryDelayMs > 0) {
+                        usleep($this->retryDelayMs * 1000);
+                    }
+                    continue;
                 }
 
-                if ($this->retryDelayMs > 0) {
-                    usleep($this->retryDelayMs * 1000);
-                }
+                // No more retries - create a failed response instead of throwing
+                $errorBody = json_encode([
+                    'error' => $e->getMessage(),
+                    'type' => 'connection_failure',
+                    'trace' => $e->getTraceAsString()
+                ]);
+
+                // Format as FCGI response with 503 status
+                $errorOutput = "Status: 503 Service Unavailable\r\n" .
+                    "Content-Type: application/json\r\n" .
+                    "\r\n" .
+                    $errorBody;
+
+                $response = new Response(
+                    output: $errorOutput,
+                    error: $e->getMessage(),
+                    duration: 0.0,
+                    connectDuration: 0.0,
+                    writeDuration: 0.0
+                );
+
+                $response->setAttempts($attempts);
+
+                return $response;
             }
+
         } while (true);
     }
 
