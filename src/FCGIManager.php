@@ -289,7 +289,7 @@ class FCGIManager
 
         $this->scriptPath = $scriptPath;
 
-        $builder = (new RequestBuilder)
+        $builder = (new RequestBuilder())
             ->method($method)
             ->path($this->scriptPath)
             ->withHeaders($this->headers);
@@ -320,7 +320,6 @@ class FCGIManager
         }
 
         $attempts = 0;
-        $lastException = null;
         $response = null;
 
         do {
@@ -346,7 +345,6 @@ class FCGIManager
                 return $response;
 
             } catch (Throwable $e) {
-                $lastException = $e;
 
                 // Check if we should retry based on the exception
                 if ($attempts < $this->maxRetries && $this->shouldRetry(null, $e, $request)) {

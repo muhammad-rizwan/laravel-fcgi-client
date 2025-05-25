@@ -276,6 +276,12 @@ class RequestBuilder
             $request = $request->withCustomVar($key, $value);
         }
 
+        // Always set the correct content length based on the body provided
+        $request = $request->withServerParam(
+            'CONTENT_LENGTH',
+            (string) $request->getContentLength()
+        );
+
         return $request;
     }
 }
