@@ -196,7 +196,7 @@ class Response implements ResponseInterface
     public function toArray(): array
     {
         return [
-            'status'      => $this->getStatusCode(),
+            'status_code'      => $this->getStatusCode(),
             'status_message' => $this->getStatusMessage(),
             'headers'     => $this->getHeaders(),
             'body'        => $this->json() ?? $this->getBody(),
