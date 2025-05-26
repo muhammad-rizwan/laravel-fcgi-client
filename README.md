@@ -4,7 +4,7 @@ A modern, Laravel-style FastCGI client that lets your Laravel application commun
 
 ## Acknowledgements
 
-This package is built as a fork of the [fast-cgi-client](https://github.com/hollodotme/fast-cgi-client) library originally authored by **hollodotme**. We’ve adapted and extended it to provide seamless integration with Laravel—many thanks to the original author for creating such a solid foundation.
+This package is built as a fork of the [fast-cgi-client](https://github.com/hollodotme/fast-cgi-client) library originally authored by **hollodotme**. We've adapted and extended it to provide seamless integration with Laravel—many thanks to the original author for creating such a solid foundation.
 
 ## What is FastCGI?
 
@@ -14,7 +14,7 @@ In a traditional PHP web application setup, the web server (e.g., Nginx) receive
 
 ## Where This Package Can Be Used
 
-This package enables Laravel applications to directly communicate with FastCGI servers, which opens up several use cases:
+This package enables Laravel applications to directly communicate with PHP-FPM, which opens up several use cases:
 
 1. **Microservices Architecture**: Directly communicate with other PHP-based microservices without going through HTTP, reducing overhead.
 
@@ -27,7 +27,7 @@ This package enables Laravel applications to directly communicate with FastCGI s
 ## 🚀 Installation
 
 ```bash
-  composer require mrizwan/laravel-fcgi-client
+composer require mrizwan/laravel-fcgi-client
 ```
 
 ## 🔧 Configuration
@@ -47,23 +47,22 @@ use Rizwan\LaravelFcgiClient\Facades\FCGI;
 ```php
 $response = FCGI::withUri('/api/products')
     ->withQuery(['category' => 'electronics'])
-    ->get('remote-server.com', '/var/www/public/index.php', 9000);  // Port is optional, defaults to 9000
+    ->get('remote-server.com', '/var/www/public/index.php', [], 9000);
 
 // Handle the response
 $data = $response->json();
-$statusCode = $response->status();
+$statusCode = $response->getStatusCode();
 ```
 
 ### POST Request with Data
 
 ```php
 $response = FCGI::withUri('/api/products')
-    ->withPayload([
+    ->post('remote-server.com', '/var/www/public/index.php', [
         'name' => 'New Product',
         'price' => 99.99,
         'category' => 'electronics'
-    ])
-    ->post('remote-server.com', '/var/www/public/index.php');
+    ]);
 
 // Check if the request was successful
 if ($response->successful()) {
@@ -76,26 +75,26 @@ if ($response->successful()) {
 
 ```php
 $response = FCGI::withUri('/api/users')
-    ->withPayload([
+    ->asJson()
+    ->post('auth-service.internal', '/var/www/public/index.php', [
         'user' => [
             'name' => 'John Doe',
             'email' => 'john@example.com'
         ]
-    ])
-    ->json('auth-service.internal', '/var/www/public/index.php');
+    ]);
 ```
 
 ## 📡 Available Methods
 
 ### HTTP Methods
 
-- `get(string $host, string $scriptPath, ?int $port = null)`
-- `post(string $host, string $scriptPath, ?int $port = null)`
-- `put(string $host, string $scriptPath, ?int $port = null)`
-- `patch(string $host, string $scriptPath, ?int $port = null)`
-- `delete(string $host, string $scriptPath, ?int $port = null)`
-- `json(string $host, string $scriptPath, ?int $port = null)` — sends JSON payload with proper headers
-- `form(string $host, string $scriptPath, ?int $port = null)` — sends form-encoded data
+All HTTP methods support Laravel-like signatures with optional data arrays:
+
+- `get(string $host, string $scriptPath, array $query = [], ?int $port = null)`
+- `post(string $host, string $scriptPath, array $data = [], ?int $port = null)`
+- `put(string $host, string $scriptPath, array $data = [], ?int $port = null)`
+- `patch(string $host, string $scriptPath, array $data = [], ?int $port = null)`
+- `delete(string $host, string $scriptPath, array $data = [], ?int $port = null)`
 
 ### Request Configuration
 
@@ -106,14 +105,17 @@ FCGI::withHeaders([
     'Accept-Language' => 'en-US'
 ]);
 
-// Add query parameters (for GET requests)
+// Add a single header
+FCGI::withHeader('X-API-Key', 'secret-key');
+
+// Add query parameters (for GET requests or as method parameter)
 FCGI::withQuery([
     'page' => 1,
     'limit' => 20,
     'sort' => 'created_at'
 ]);
 
-// Add request payload (for POST, PUT, PATCH, etc.)
+// Add request payload (for POST, PUT, PATCH requests)
 FCGI::withPayload([
     'name' => 'Product Name',
     'description' => 'Product description'
@@ -125,8 +127,15 @@ FCGI::withBody(
     'application/json'
 );
 
-// Set the URI 
-FCGI::withUri('/api/v1/products');
+// Set the URI with URL template support
+FCGI::withUri('/api/v1/users/{userId}/posts/{postId}');
+
+// Set URL parameters for template substitution
+FCGI::withUrlParameters([
+    'userId' => 123,
+    'postId' => 456,
+    'user' => ['id' => 789] // Supports nested parameters
+]);
 
 // Add custom server parameters that will be available in $_SERVER
 FCGI::withServerParams([
@@ -139,9 +148,9 @@ FCGI::withCustomVars([
     'CUSTOM_VAR' => 'custom_value'
 ]);
 
-// Set connection timeouts
-FCGI::timeout(5000);        // Read timeout in milliseconds
-FCGI::connectTimeout(3000); // Connect timeout in milliseconds
+// Set connection timeouts (in seconds)
+FCGI::timeout(30);        // Read timeout
+FCGI::connectTimeout(5);  // Connect timeout
 
 // Add retry logic
 FCGI::retry(
@@ -153,17 +162,86 @@ FCGI::retry(
 );
 ```
 
+### Content Type Configuration
+
+```php
+// Configure request to send JSON payload
+FCGI::asJson()
+    ->post('service.com', '/script.php', ['key' => 'value']);
+
+// Configure request to send form-encoded data
+FCGI::asForm()
+    ->post('service.com', '/script.php', ['key' => 'value']);
+
+// Set Accept header to JSON
+FCGI::acceptJson();
+
+// Set Accept header to specific content type
+FCGI::accept('application/xml');
+
+// Set custom content type
+FCGI::contentType('application/vnd.api+json');
+```
+
+### Authentication
+
+```php
+// Bearer token authentication
+FCGI::withToken('your-jwt-token')
+    ->get('api.example.com', '/protected/endpoint.php');
+
+// Custom token type
+FCGI::withToken('api-key-123', 'ApiKey')
+    ->get('api.example.com', '/endpoint.php');
+
+// Basic authentication
+FCGI::withBasicAuth('username', 'password')
+    ->get('api.example.com', '/endpoint.php');
+
+// Custom User-Agent
+FCGI::withUserAgent('MyApp/1.0')
+    ->get('api.example.com', '/endpoint.php');
+```
+
 ## Method Chaining
 
 You can chain multiple methods together for cleaner code:
 
 ```php
 $response = FCGI::withHeaders(['X-API-Key' => 'secret-key'])
-    ->withUri('/api/v1/users')
-    ->withQuery(['status' => 'active'])
-    ->timeout(10000)
+    ->withUri('/api/v1/users/{userId}')
+    ->withUrlParameters(['userId' => 123])
+    ->withQuery(['include' => 'profile'])
+    ->timeout(10)
     ->retry(3, 1000)
     ->get('user-service.internal', '/var/www/public/index.php');
+```
+
+## 🔗 URL Templates
+
+The package supports URL templates with parameter substitution:
+
+```php
+// Simple parameter substitution
+$response = FCGI::withUri('/api/users/{id}')
+    ->withUrlParameters(['id' => 123])
+    ->get('api.example.com', '/index.php');
+// Results in: /api/users/123
+
+// Nested parameter support
+$response = FCGI::withUri('/api/users/{user.id}/posts/{post.id}')
+    ->withUrlParameters([
+        'user' => ['id' => 123],
+        'post' => ['id' => 456]
+    ])
+    ->get('api.example.com', '/index.php');
+// Results in: /api/users/123/posts/456
+
+// Parameters not found remain as placeholders
+$response = FCGI::withUri('/api/{missing}/endpoint')
+    ->withUrlParameters(['existing' => 'value'])
+    ->get('api.example.com', '/index.php');
+// Results in: /api/{missing}/endpoint
 ```
 
 ## 🌐 Response API
@@ -171,22 +249,22 @@ $response = FCGI::withHeaders(['X-API-Key' => 'secret-key'])
 The response object provides a rich API similar to Laravel's HTTP client:
 
 ```php
-$response = FCGI::get(...);
+$response = FCGI::get('api.example.com', '/script.php');
 
 // Status code and state checks
-$statusCode = $response->status();          // e.g. 200
-$isOk = $response->ok();                    // true if 200
-$isUnauthorized = $response->unauthorized(); // true if 401
-$isForbidden = $response->forbidden();      // true if 403
-$isNotFound = $response->notFound();        // true if 404
-$isServerError = $response->serverError();  // true if 5xx
-$isSuccessful = $response->successful();    // true if < 400 and no error
+$statusCode = $response->getStatusCode();       // e.g. 200
+$isOk = $response->ok();                       // true if 200
+$isUnauthorized = $response->unauthorized();   // true if 401
+$isForbidden = $response->forbidden();         // true if 403
+$isNotFound = $response->notFound();           // true if 404
+$isServerError = $response->serverError();     // true if 5xx
+$isSuccessful = $response->successful();       // true if < 400 and no error
 
 // Content access
-$body = $response->body();                  // Raw body string
-$data = $response->json();                  // Decoded JSON array
-$value = $response->json('user.name');      // Access JSON via dot notation
-$array = $response->toArray();              // Response as array including timing metrics
+$body = $response->body();                     // Raw body string
+$data = $response->json();                     // Decoded JSON array
+$value = $response->json('user.name');         // Access JSON via dot notation
+$array = $response->toArray();                 // Response as array including timing metrics
 
 // Headers
 $contentType = $response->header('Content-Type');  // Get a single header
@@ -194,16 +272,15 @@ $allHeaders = $response->getHeaders();            // Get all headers
 $hasHeader = $response->hasHeader('X-Custom');    // Check if header exists
 
 // Performance
-$duration = $response->getDuration();       // Response read duration in seconds
-$connectTime = $response->getConnectDuration(); // TCP connect duration in milliseconds
-$writeTime = $response->getWriteDuration();     // Request write duration in milliseconds
-$array['connect_duration_ms'];                  // Milliseconds spent connecting
-$array['write_duration_ms'];                    // Milliseconds spent writing
+$duration = $response->getDuration();             // Response read duration in seconds
+$connectTime = $response->getConnectDuration();   // TCP connect duration in milliseconds
+$writeTime = $response->getWriteDuration();       // Request write duration in milliseconds
+$attempts = $response->getAttempts();             // Number of retry attempts made
 
 // Exception handling
-$response->throw();                         // Throws if status >= 400
-$response->throwIf($condition);             // Conditional throw 
-$response->throwUnless($condition);         // Conditional throw
+$response->throw();                               // Throws if status >= 400
+$response->throwIf($condition);                   // Conditional throw 
+$response->throwUnless($condition);               // Conditional throw
 ```
 
 ## 🔁 Concurrent Requests with Laravel's Concurrency Facade
@@ -221,7 +298,7 @@ $responses = Concurrency::concurrent([
         ->get('catalog-service.internal', '/var/www/public/index.php'),
         
     'user' => fn() => FCGI::withUri('/api/user')
-        ->withHeaders(['Authorization' => 'Bearer ' . $token])
+        ->withToken($token)
         ->get('user-service.internal', '/var/www/public/index.php'),
 ]);
 
@@ -233,19 +310,17 @@ $user = $responses['user']->json();
 
 ## Real-World Examples
 
-### Accessing a Remote API
+### Accessing a Remote API with URL Templates
 
 ```php
 $response = FCGI::withHeaders([
     'Authorization' => 'Bearer ' . $apiToken,
     'Accept' => 'application/json',
 ])
-->withUri('/api/v1/stats/daily')
-->timeout(5000)
-->get(
-    'api-backend.internal',
-    '/var/www/html/api/public/index.php'
-);
+->withUri('/api/v1/users/{userId}/stats/daily')
+->withUrlParameters(['userId' => auth()->id()])
+->timeout(5)
+->get('api-backend.internal', '/var/www/html/api/public/index.php');
 
 return $response->json();
 ```
@@ -253,16 +328,13 @@ return $response->json();
 ### Submitting a Form to a Remote Application
 
 ```php
-$response = FCGI::withPayload([
-    'email' => $request->email,
-    'name' => $request->name,
-    'message' => $request->message,
-])
-->withUri('/submit-form')
-->form(
-    'contact-service.internal',
-    '/var/www/html/contact/public/index.php'
-);
+$response = FCGI::withUri('/submit-form')
+    ->asForm()
+    ->post('contact-service.internal', '/var/www/html/contact/public/index.php', [
+        'email' => $request->email,
+        'name' => $request->name,
+        'message' => $request->message,
+    ]);
 
 if ($response->successful()) {
     return redirect()->back()->with('success', 'Your message has been sent!');
@@ -274,21 +346,45 @@ if ($response->successful()) {
 ### Creating a Resource on a Remote Service
 
 ```php
-$response = FCGI::withPayload([
-    'title' => $request->title,
-    'content' => $request->content,
-    'author_id' => Auth::id(),
-])
-->withHeaders([
+$response = FCGI::withHeaders([
     'X-API-Key' => config('services.blog.api_key'),
 ])
 ->withUri('/api/posts')
-->json(
-    'blog-service.internal',
-    '/var/www/html/blog/public/index.php'
-);
+->asJson()
+->post('blog-service.internal', '/var/www/html/blog/public/index.php', [
+    'title' => $request->title,
+    'content' => $request->content,
+    'author_id' => Auth::id(),
+]);
 
-return response()->json($response->json(), $response->status());
+return response()->json($response->json(), $response->getStatusCode());
+```
+
+### RESTful API with URL Templates
+
+```php
+// GET /api/users/123/posts/456/comments
+$response = FCGI::withUri('/api/users/{userId}/posts/{postId}/comments')
+    ->withUrlParameters([
+        'userId' => $user->id,
+        'postId' => $post->id
+    ])
+    ->withQuery(['include' => 'author,replies'])
+    ->get('blog-service.internal', '/var/www/blog/public/index.php');
+
+// PUT /api/users/123/profile
+$response = FCGI::withUri('/api/users/{userId}/profile')
+    ->withUrlParameters(['userId' => $user->id])
+    ->asJson()
+    ->put('user-service.internal', '/var/www/user/public/index.php', [
+        'name' => $request->name,
+        'bio' => $request->bio
+    ]);
+
+// DELETE /api/posts/456
+$response = FCGI::withUri('/api/posts/{postId}')
+    ->withUrlParameters(['postId' => $post->id])
+    ->delete('blog-service.internal', '/var/www/blog/public/index.php');
 ```
 
 ### Fetching Data from Multiple Services
@@ -299,15 +395,18 @@ use Illuminate\Support\Facades\Concurrency;
 $user = auth()->user();
 
 $dashboard = Concurrency::concurrent([
-    'profile' => fn() => FCGI::withUri('/api/user/'.$user->id)
+    'profile' => fn() => FCGI::withUri('/api/users/{userId}')
+        ->withUrlParameters(['userId' => $user->id])
         ->get('user-service.internal', '/var/www/user-service/public/index.php'),
         
-    'orders' => fn() => FCGI::withUri('/api/orders')
-        ->withQuery(['user_id' => $user->id])
+    'orders' => fn() => FCGI::withUri('/api/users/{userId}/orders')
+        ->withUrlParameters(['userId' => $user->id])
+        ->withQuery(['status' => 'active'])
         ->get('order-service.internal', '/var/www/order-service/public/index.php'),
         
-    'notifications' => fn() => FCGI::withUri('/api/notifications')
-        ->withQuery(['user_id' => $user->id, 'unread' => true])
+    'notifications' => fn() => FCGI::withUri('/api/users/{userId}/notifications')
+        ->withUrlParameters(['userId' => $user->id])
+        ->withQuery(['unread' => true])
         ->get('notification-service.internal', '/var/www/notification-service/public/index.php'),
 ]);
 
@@ -316,6 +415,27 @@ return view('dashboard', [
     'orders' => $dashboard['orders']->json(),
     'notificationCount' => count($dashboard['notifications']->json('data')),
 ]);
+```
+
+## Smart Content Type Defaults
+
+The package intelligently chooses content types based on the HTTP method:
+
+```php
+// POST requests default to form-encoded data
+FCGI::post('service.com', '/script.php', ['key' => 'value']);
+// Content-Type: application/x-www-form-urlencoded
+
+// PUT/PATCH requests default to JSON
+FCGI::put('service.com', '/script.php', ['key' => 'value']);
+// Content-Type: application/json
+
+// Override defaults with explicit configuration
+FCGI::asJson()->post('service.com', '/script.php', ['key' => 'value']);
+// Content-Type: application/json
+
+FCGI::asForm()->put('service.com', '/script.php', ['key' => 'value']);
+// Content-Type: application/x-www-form-urlencoded
 ```
 
 ## Error Handling
@@ -342,7 +462,7 @@ try {
 }
 
 // Using the throw method and Laravel's error handling
-$posts = FCGI::get('blog-service.internal', '/var/www/blog/public/index.php', ['uri' => '/api/posts'])
+$posts = FCGI::get('blog-service.internal', '/var/www/blog/public/index.php')
     ->throw()  // This will throw an exception if the request fails
     ->json();
 
@@ -350,34 +470,52 @@ $posts = FCGI::get('blog-service.internal', '/var/www/blog/public/index.php', ['
 $response = FCGI::get('service.internal', '/path/to/script.php');
 
 $response->throwIf(
-    $response->status() === 429,
+    $response->getStatusCode() === 429,
     fn() => new RateLimitException('Too many requests')
 );
 
 // Using throwUnless
 $response->throwUnless(
-    $response->status() === 200,
+    $response->getStatusCode() === 200,
     fn() => new ServiceException('Expected 200 OK response')
 );
 ```
 
 ## Retry Logic
 
-For unstable services or network connections, you can add retry logic:
+For unstable services or network connections, you can add retry logic with intelligent defaults:
 
 ```php
 // Basic retry (3 attempts with 500ms delay)
 $response = FCGI::retry(3, 500)
     ->get('flaky-service.internal', '/var/www/public/index.php');
 
-// Conditional retry based on the exception
-$response = FCGI::retry(3, 1000, function ($exception) {
-    // Only retry for connection and timeout issues, not for auth problems
-    return $exception instanceof ConnectionException || 
-           $exception instanceof TimeoutException;
+// By default, retries happen on:
+// - Connection failures and timeouts (always)
+// - Server errors (5xx status codes)
+// - NOT on client errors (4xx status codes)
+
+// Custom retry logic based on the exception or response
+$response = FCGI::retry(3, 1000, function ($exceptionOrResponse, $request) {
+    // Only retry for connection and timeout issues
+    if ($exceptionOrResponse instanceof \Throwable) {
+        return $exceptionOrResponse instanceof ConnectionException || 
+               $exceptionOrResponse instanceof TimeoutException;
+    }
+    
+    // For responses, retry on server errors but not client errors
+    if ($exceptionOrResponse instanceof Response) {
+        return $exceptionOrResponse->serverError();
+    }
+    
+    return false;
 })
-->withHeaders(['Authorization' => 'Bearer '.$token])
+->withToken($token)
 ->get('api-service.internal', '/var/www/public/index.php');
+
+// Check retry attempts
+$response = FCGI::retry(3)->get('service.com', '/script.php');
+echo "Request took {$response->getAttempts()} attempts";
 ```
 
 ## 🧪 Testing
