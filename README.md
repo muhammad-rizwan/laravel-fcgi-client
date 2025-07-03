@@ -44,6 +44,9 @@ use Rizwan\LaravelFcgiClient\Facades\FCGI;
 
 ## ✅ Basic Usage
 
+* The URL must **NOT** include the protocol.
+  * E.g.: `example-domain.com/example-endpoint`
+
 ### Simple GET Request
 
 ```php
