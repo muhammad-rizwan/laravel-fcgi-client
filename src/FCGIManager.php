@@ -5,7 +5,6 @@ namespace Rizwan\LaravelFcgiClient;
 use Closure;
 use GuzzleHttp\Psr7\Utils;
 use GuzzleHttp\UriTemplate\UriTemplate;
-use Illuminate\Support\Str;
 use Rizwan\LaravelFcgiClient\Client\Client;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Enums\RequestMethod;
@@ -355,7 +354,7 @@ class FCGIManager
      */
     private function sendRequest(RequestMethod $method, string $url): Response
     {
-        if (!Str::startsWith($url, ['tcp://'])) {
+        if (!str_starts_with($url, 'tcp://')) {
             $url = 'tcp://' . trim($url, '/');
         }
 
