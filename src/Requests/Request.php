@@ -11,6 +11,16 @@ class Request
 
     private array $customVars = [];
 
+    /**
+     * @var string
+     */
+    public string $requestUri;
+
+    /**
+     * @var string
+     */
+    public string $host;
+
     public function __construct(
         private readonly RequestMethod $method,
         private readonly string $scriptPath,
@@ -54,17 +64,13 @@ class Request
 
     public function withServerParam(string $key, string $value): self
     {
-        $clone = clone $this;
-        $clone->serverParams[$key] = $value;
-
-        return $clone;
+        $this->serverParams[$key] = $value;
+        return $this;
     }
 
     public function withCustomVar(string $key, mixed $value): self
     {
-        $clone = clone $this;
-        $clone->customVars[$key] = $value;
-
-        return $clone;
+        $this->customVars[$key] = $value;
+        return $this;
     }
 }

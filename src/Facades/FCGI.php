@@ -17,7 +17,6 @@ use Rizwan\LaravelFcgiClient\FCGIManager;
  * @method static \Rizwan\LaravelFcgiClient\FCGIManager withToken(string $token, string $type = 'Bearer')
  * @method static \Rizwan\LaravelFcgiClient\FCGIManager withBasicAuth(string $username, string $password)
  * @method static \Rizwan\LaravelFcgiClient\FCGIManager withUserAgent(string $userAgent)
- * @method static \Rizwan\LaravelFcgiClient\FCGIManager withUri(string $uri)
  * @method static \Rizwan\LaravelFcgiClient\FCGIManager withUrlParameters(array $parameters)
  * @method static \Rizwan\LaravelFcgiClient\FCGIManager withServerParams(array $params)
  * @method static \Rizwan\LaravelFcgiClient\FCGIManager withCustomVars(array $vars)
@@ -34,11 +33,14 @@ use Rizwan\LaravelFcgiClient\FCGIManager;
  * @method static \Rizwan\LaravelFcgiClient\FCGIManager connectTimeout(int $seconds)
  * @method static \Rizwan\LaravelFcgiClient\FCGIManager retry(int $times, int $sleepMilliseconds = 0, ?callable $when = null)
  *
- * @method static \Rizwan\LaravelFcgiClient\Responses\Response get(string $host, string $scriptPath, array $query = [], ?int $port = null)
- * @method static \Rizwan\LaravelFcgiClient\Responses\Response post(string $host, string $scriptPath, array $data = [], ?int $port = null)
- * @method static \Rizwan\LaravelFcgiClient\Responses\Response put(string $host, string $scriptPath, array $data = [], ?int $port = null)
- * @method static \Rizwan\LaravelFcgiClient\Responses\Response patch(string $host, string $scriptPath, array $data = [], ?int $port = null)
- * @method static \Rizwan\LaravelFcgiClient\Responses\Response delete(string $host, string $scriptPath, array $data = [], ?int $port = null)
+ * @method static \Rizwan\LaravelFcgiClient\FCGIManager scriptPath(string $scriptPath)
+ * @method static \Rizwan\LaravelFcgiClient\FCGIManager port(int $port)
+ *
+ * @method static \Rizwan\LaravelFcgiClient\Responses\Response get(string $url, array $query = [])
+ * @method static \Rizwan\LaravelFcgiClient\Responses\Response post(string $url, array $data = [])
+ * @method static \Rizwan\LaravelFcgiClient\Responses\Response put(string $url, array $data = [])
+ * @method static \Rizwan\LaravelFcgiClient\Responses\Response patch(string $url, array $data = [])
+ * @method static \Rizwan\LaravelFcgiClient\Responses\Response delete(string $url, array $data = [])
  */
 final class FCGI extends Facade
 {
