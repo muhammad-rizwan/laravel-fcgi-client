@@ -364,6 +364,10 @@ class FCGIManager
 
         $processedUri = Utils::uriFor($uri);
 
+        if (in_array($processedUri->getScheme(), ['http', 'https'])) {
+            $processedUri->withScheme('tcp');
+        }
+
         $builder = (new RequestBuilder())
             ->path($this->scriptPath)
             ->method($method)
