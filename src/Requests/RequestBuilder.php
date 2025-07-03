@@ -316,7 +316,8 @@ class RequestBuilder
             (string) $request->getContentLength()
         );
 
-        $request->withServerParam('REQUEST_URI', $this->requestUri . ($this->serverParams['QUERY_STRING'] ? '?' . $this->serverParams['QUERY_STRING'] : ''));
+        $queryString = $this->serverParams['QUERY_STRING'] ?? '';
+        $request->withServerParam('REQUEST_URI', $this->requestUri . ($queryString ? '?' . $queryString : ''));
         $request->requestUri = $this->requestUri;
 
         $request->withServerParam('HTTP_HOST', $this->host);
