@@ -36,9 +36,9 @@ class FCGIManager
      * Create a new FastCGI Manager instance.
      */
     public function __construct(
-        private string $scriptPath = '/var/www/public/index.php',
-        private int $port = 9000,
         private readonly Client $client,
+        private string $scriptPath = '/var/www/public/index.php',
+        private int $port = 9000
     ) {
     }
 
