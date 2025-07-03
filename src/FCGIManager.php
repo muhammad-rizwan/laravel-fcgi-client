@@ -3,18 +3,18 @@
 namespace Rizwan\LaravelFcgiClient;
 
 use Closure;
+use GuzzleHttp\Psr7\Utils;
+use GuzzleHttp\UriTemplate\UriTemplate;
 use Rizwan\LaravelFcgiClient\Client\Client;
 use Rizwan\LaravelFcgiClient\Connections\NetworkConnection;
 use Rizwan\LaravelFcgiClient\Enums\RequestMethod;
+use Rizwan\LaravelFcgiClient\Requests\Request;
 use Rizwan\LaravelFcgiClient\Requests\RequestBuilder;
 use Rizwan\LaravelFcgiClient\Responses\Response;
 use Throwable;
 
 class FCGIManager
 {
-    private ?NetworkConnection $connection = null;
-    private string $scriptPath = '';
-    private string $uri = '';
     private array $urlParameters = [];
     private array $headers = [];
     private array $serverParams = [];
@@ -35,7 +35,9 @@ class FCGIManager
      * Create a new FastCGI Manager instance.
      */
     public function __construct(
-        private readonly Client $client
+        private readonly Client $client,
+        private string $scriptPath = '/var/www/public/index.php',
+        private int $port = 9000
     ) {
     }
 
@@ -46,51 +48,62 @@ class FCGIManager
     /**
      * Send a GET request to the FastCGI server.
      */
-    public function get(string $host, string $scriptPath, array $query = [], ?int $port = null): Response
+    public function get(string $url, array $query = []): Response
     {
         if (!empty($query)) {
             $this->withQuery($query);
         }
-        return $this->sendRequest($host, $port, $scriptPath, RequestMethod::GET);
+        return $this->sendRequest(RequestMethod::GET, $url);
+    }
+
+    /**
+     * Send a HEAD request to the FastCGI server.
+     */
+    public function head(string $url, array $query = []): Response
+    {
+        if (!empty($query)) {
+            $this->withQuery($query);
+        }
+        return $this->sendRequest(RequestMethod::HEAD, $url);
     }
 
     /**
      * Send a POST request to the FastCGI server.
      */
-    public function post(string $host, string $scriptPath, array $data = [], ?int $port = null): Response
+    public function post(string $url, array $data = []): Response
     {
         if (!empty($data)) {
             $this->withPayload($data);
         }
-        return $this->sendRequest($host, $port, $scriptPath, RequestMethod::POST);
-    }
-
-    /**
-     * Send a PUT request to the FastCGI server.
-     */
-    public function put(string $host, string $scriptPath, array $data = [], ?int $port = null): Response
-    {
-        if (!empty($data)) {
-            $this->withPayload($data);
-        }
-        return $this->sendRequest($host, $port, $scriptPath, RequestMethod::PUT);
+        return $this->sendRequest(RequestMethod::POST, $url);
     }
 
     /**
      * Send a PATCH request to the FastCGI server.
      */
-    public function patch(string $host, string $scriptPath, array $data = [], ?int $port = null): Response
+    public function patch(string $url, array $data = []): Response
     {
         if (!empty($data)) {
             $this->withPayload($data);
         }
-        return $this->sendRequest($host, $port, $scriptPath, RequestMethod::PATCH);
+        return $this->sendRequest(RequestMethod::PATCH, $url);
+    }
+
+    /**
+     * Send a PUT request to the FastCGI server.
+     */
+    public function put(string $url, array $data = []): Response
+    {
+        if (!empty($data)) {
+            $this->withPayload($data);
+        }
+        return $this->sendRequest(RequestMethod::PUT, $url);
     }
 
     /**
      * Send a DELETE request to the FastCGI server.
      */
-    public function delete(string $host, string $scriptPath, array $data = [], ?int $port = null): Response
+    public function delete(string $url, array $data = []): Response
     {
         if (!empty($data)) {
             // DELETE can have data in query or body - let's default to query for RESTful APIs
@@ -100,12 +113,32 @@ class FCGIManager
                 $this->withQuery($data);
             }
         }
-        return $this->sendRequest($host, $port, $scriptPath, RequestMethod::DELETE);
+        return $this->sendRequest(RequestMethod::DELETE, $url);
     }
 
     // ========================================
     // Request Configuration Methods
     // ========================================
+
+    /**
+     * @param string $scriptPath
+     * @return self
+     */
+    public function scriptPath(string $scriptPath): self
+    {
+        $this->scriptPath = $scriptPath;
+        return $this;
+    }
+
+    /**
+     * @param int $port
+     * @return self
+     */
+    public function port(int $port): self
+    {
+        $this->port = $port;
+        return $this;
+    }
 
     /**
      * Set HTTP headers for the request.
@@ -158,15 +191,6 @@ class FCGIManager
     public function withUserAgent(string $userAgent): self
     {
         return $this->withHeader('User-Agent', $userAgent);
-    }
-
-    /**
-     * Set the request URI with support for URL templates.
-     */
-    public function withUri(string $uri): self
-    {
-        $this->uri = $uri;
-        return $this;
     }
 
     /**
@@ -302,45 +326,6 @@ class FCGIManager
     // ========================================
 
     /**
-     * Process URL templates by substituting parameters.
-     */
-    private function processUrlTemplate(string $uri): string
-    {
-        if (empty($this->urlParameters)) {
-            return $uri;
-        }
-
-        return preg_replace_callback('/\{([^}]+)\}/', function ($matches) {
-            $key = $matches[1];
-
-            // Support nested parameters like 'user.id'
-            if (str_contains($key, '.')) {
-                return $this->getNestedParameter($key);
-            }
-
-            return $this->urlParameters[$key] ?? $matches[0];
-        }, $uri);
-    }
-
-    /**
-     * Get nested parameter value using dot notation.
-     */
-    private function getNestedParameter(string $key): string
-    {
-        $keys = explode('.', $key);
-        $value = $this->urlParameters;
-
-        foreach ($keys as $segment) {
-            if (!is_array($value) || !array_key_exists($segment, $value)) {
-                return "{{$key}}"; // Return original placeholder if not found
-            }
-            $value = $value[$segment];
-        }
-
-        return (string) $value;
-    }
-
-    /**
      * Determine if the request should be retried based on response or exception.
      */
     private function shouldRetry(?Response $response, ?Throwable $exception, $request): bool
@@ -367,32 +352,23 @@ class FCGIManager
     /**
      * Send a request to the FastCGI server.
      */
-    private function sendRequest(
-        string $host,
-        ?int $port,
-        string $scriptPath,
-        RequestMethod $method
-    ): Response {
-        $port ??= 9000;
+    private function sendRequest(RequestMethod $method, string $url): Response
+    {
+        if (!str_starts_with($url, 'tcp://')) {
+            $url = 'tcp://' . trim($url, '/');
+        }
 
-        $this->connection = new NetworkConnection(
-            $host,
-            $port,
-            $this->connectTimeout * 1000, // Convert to milliseconds
-            $this->readTimeout * 1000     // Convert to milliseconds
-        );
+        // Process and set REQUEST_URI with URL template substitution
+        $uri = UriTemplate::expand($url, $this->urlParameters);
 
-        $this->scriptPath = $scriptPath;
+        $processedUri = Utils::uriFor($uri);
 
         $builder = (new RequestBuilder())
-            ->method($method)
             ->path($this->scriptPath)
+            ->method($method)
+            ->host($processedUri->getHost())
+            ->requestUri($processedUri->getPath())
             ->withHeaders($this->headers);
-
-        // Handle query parameters for GET/DELETE or when explicitly set
-        if (($method === RequestMethod::GET || $method === RequestMethod::DELETE) && !empty($this->query)) {
-            $builder->query($this->query);
-        }
 
         // Handle request body for POST/PUT/PATCH
         if (in_array($method, [RequestMethod::POST, RequestMethod::PUT, RequestMethod::PATCH])) {
@@ -414,6 +390,11 @@ class FCGIManager
             }
         }
 
+        // Handle query parameters for GET/DELETE or when explicitly set
+        if (($method === RequestMethod::GET || $method === RequestMethod::DELETE) && !empty($this->query)) {
+            $builder->query($this->query);
+        }
+
         // Handle DELETE with payload (less common but valid)
         if ($method === RequestMethod::DELETE && !empty($this->payload) && ($this->asJsonRequest || $this->asFormRequest || !empty($this->rawBody))) {
             if ($this->asJsonRequest) {
@@ -423,39 +404,37 @@ class FCGIManager
             }
         }
 
-        $request = $builder->build();
-
-        // Process and set REQUEST_URI with URL template substitution
-        if (!empty($this->uri)) {
-            $processedUri = $this->processUrlTemplate($this->uri);
-            $request = $request->withServerParam('REQUEST_URI', $processedUri);
-        }
-
         // Apply additional server parameters
         foreach ($this->serverParams as $key => $value) {
-            $request = $request->withServerParam($key, $value);
+            $builder = $builder->withServerParam($key, $value);
         }
 
         // Apply custom FastCGI variables
         foreach ($this->customVars as $key => $value) {
-            $request = $request->withCustomVar($key, $value);
+            $builder = $builder->withCustomVar($key, $value);
         }
 
-        return $this->executeWithRetry($request);
+        return $this->executeWithRetry($builder->build());
     }
 
     /**
      * Execute request with retry logic.
      */
-    private function executeWithRetry($request): Response
+    private function executeWithRetry(Request $request): Response
     {
         $attempts = 0;
+        $connection = new NetworkConnection(
+            $request->host,
+            $this->port,
+            $this->connectTimeout * 1000, // Convert to milliseconds
+            $this->readTimeout * 1000     // Convert to milliseconds
+        );
 
         do {
             $attempts++;
 
             try {
-                $response = $this->client->sendRequest($this->connection, $request);
+                $response = $this->client->sendRequest($connection, $request);
                 $response->setAttempts($attempts);
 
                 // Check if we should retry based on the response

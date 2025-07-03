@@ -48,6 +48,16 @@ class RequestBuilder
     private HeaderBag $headers;
 
     /**
+     * @var string
+     */
+    private string $requestUri;
+
+    /**
+     * @var string
+     */
+    private string $host;
+
+    /**
      * Initialize a new request builder.
      */
     public function __construct()
@@ -80,6 +90,30 @@ class RequestBuilder
     {
         $this->scriptPath = $path;
 
+        return $this;
+    }
+
+    /**
+     * The request's uri/url path: /path/to/my/resource
+     *
+     * @param string $requestUri
+     * @return $this
+     */
+    public function requestUri(string $requestUri): static
+    {
+        $this->requestUri = $requestUri;
+        return $this;
+    }
+
+    /**
+     * The host/domain/ip
+     *
+     * @param string $host
+     * @return $this
+     */
+    public function host(string $host): static
+    {
+        $this->host = $host;
         return $this;
     }
 
@@ -265,22 +299,28 @@ class RequestBuilder
 
         // Inject headers as server params
         foreach ($this->headers->toServerParams() as $key => $value) {
-            $request = $request->withServerParam($key, $value);
+            $request->withServerParam($key, $value);
         }
 
         foreach ($this->serverParams as $key => $value) {
-            $request = $request->withServerParam($key, $value);
+            $request->withServerParam($key, $value);
         }
 
         foreach ($this->customVars as $key => $value) {
-            $request = $request->withCustomVar($key, $value);
+            $request->withCustomVar($key, $value);
         }
 
         // Always set the correct content length based on the body provided
-        $request = $request->withServerParam(
+        $request->withServerParam(
             'CONTENT_LENGTH',
             (string) $request->getContentLength()
         );
+
+        $request->withServerParam('REQUEST_URI', $this->requestUri . ($this->serverParams['QUERY_STRING'] ? '?' . $this->serverParams['QUERY_STRING'] : ''));
+        $request->requestUri = $this->requestUri;
+
+        $request->withServerParam('HTTP_HOST', $this->host);
+        $request->host = $this->host;
 
         return $request;
     }
